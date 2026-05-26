@@ -232,7 +232,7 @@ The UI follows `silverscreen-claude-design/`:
 - No shadcn/ui
 - No external UI component library
 - HTMX progressively enhances date-based jam tayang pagination on movie detail pages
-- Topbar with role switcher
+- Topbar with role switcher and reusable movie-ticket SVG mark
 - Role-aware horizontal navigation
 - Customer movie cards use full-card navigation with hover/focus ticket call-to-action footers
 - Movie detail jam tayang is paginated by date across the shared 14-day booking window; the date filter stays statically rendered and HTMX uses `hx-include` to refresh only the list area

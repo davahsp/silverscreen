@@ -18,7 +18,7 @@ body { background:var(--bg); color:var(--text-1); font:14px/1.55 var(--font); -w
 .app-shell { min-height:100vh; display:flex; flex-direction:column; }
 .topbar { height:var(--tb-h); background:var(--sb-bg); color:#fff; display:flex; align-items:center; gap:18px; padding:0 20px; }
 .topbar-logo { display:flex; align-items:center; gap:12px; }
-.topbar-logo-mark { width:32px; height:32px; border-radius:6px; background:var(--red); display:grid; place-items:center; font-weight:800; }
+.topbar-logo-mark { width:32px; height:32px; border-radius:6px; display:block; object-fit:contain; }
 .topbar-logo-text { font-size:16px; font-weight:800; }
 .topbar-logo-sub { font-size:10px; color:var(--sb-muted); letter-spacing:.04em; text-transform:uppercase; }
 .topbar-spacer { flex:1; }

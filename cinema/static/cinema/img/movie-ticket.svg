@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 160" role="img" aria-labelledby="movie-ticket-title movie-ticket-desc">
+  <title id="movie-ticket-title">Movie ticket</title>
+  <desc id="movie-ticket-desc">A stylized cinema ticket with perforated sides and a film strip mark.</desc>
+  <defs>
+    <linearGradient id="ticket-bg" x1="24" y1="24" x2="216" y2="136" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#b02233"/>
+      <stop offset="1" stop-color="#7f1624"/>
+    </linearGradient>
+    <linearGradient id="ticket-shine" x1="54" y1="22" x2="174" y2="148" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffffff" stop-opacity=".26"/>
+      <stop offset=".45" stop-color="#ffffff" stop-opacity=".08"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+
+  <path
+    fill="url(#ticket-bg)"
+    d="M32 34c0-6.6 5.4-12 12-12h152c6.6 0 12 5.4 12 12v20c-10.5 0-19 8.5-19 19s8.5 19 19 19v34c0 6.6-5.4 12-12 12H44c-6.6 0-12-5.4-12-12V92c10.5 0 19-8.5 19-19s-8.5-19-19-19V34Z"
+  />
+  <path
+    fill="url(#ticket-shine)"
+    d="M44 30h152c2.2 0 4 1.8 4 4v16.7c-11.1 3.4-19 13.4-19 25.3s7.9 21.9 19 25.3V126c0 2.2-1.8 4-4 4H44c-2.2 0-4-1.8-4-4v-24.7C51.1 97.9 59 87.9 59 76S51.1 54.1 40 50.7V34c0-2.2 1.8-4 4-4Z"
+  />
+
+  <path
+    fill="none"
+    stroke="#f1d18a"
+    stroke-dasharray="5 8"
+    stroke-linecap="round"
+    stroke-width="3"
+    d="M168 33v94"
+  />
+
+  <rect x="62" y="48" width="82" height="56" rx="7" fill="#1a1410" opacity=".9"/>
+  <rect x="72" y="58" width="62" height="36" rx="4" fill="#f8f1e5"/>
+  <path fill="#c89b3c" d="M86 85 99 69l10 12 7-8 14 12H86Z"/>
+  <circle cx="86" cy="68" r="5" fill="#c89b3c"/>
+
+  <g fill="#f8f1e5" opacity=".94">
+    <rect x="181" y="49" width="12" height="10" rx="2"/>
+    <rect x="181" y="66" width="12" height="10" rx="2"/>
+    <rect x="181" y="83" width="12" height="10" rx="2"/>
+    <rect x="181" y="100" width="12" height="10" rx="2"/>
+  </g>
+
+  <g fill="#f1d18a">
+    <rect x="62" y="113" width="48" height="5" rx="2.5"/>
+    <rect x="118" y="113" width="26" height="5" rx="2.5"/>
+  </g>
+</svg>

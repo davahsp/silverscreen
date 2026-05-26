@@ -5,6 +5,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}Silver Screen{% endblock %}</title>
+  <link rel="icon" type="image/svg+xml" href="{% static 'cinema/img/movie-ticket.svg' %}">
   <link rel="stylesheet" href="{% static 'cinema/css/base.css' %}">
   <script src="https://unpkg.com/htmx.org@1.9.12" defer></script>
   <script src="{% static 'cinema/js/toasts.js' %}" defer></script>
@@ -15,7 +16,7 @@
   <div class="app-shell">
     <header class="topbar">
       <a class="topbar-logo" href="{% url 'cinema:movies' %}">
-        <div class="topbar-logo-mark">SS</div>
+        <img class="topbar-logo-mark" src="{% static 'cinema/img/movie-ticket.svg' %}" alt="" aria-hidden="true">
         <div>
           <div class="topbar-logo-text">Silver Screen</div>
           <div class="topbar-logo-sub">Cinema System</div>
