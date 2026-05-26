@@ -1,10 +1,14 @@
+import json
 from datetime import timedelta
 
 from django.core.exceptions import ValidationError
+from django.contrib.messages.storage.base import Message
+from django.contrib.messages import constants as message_constants
 from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
 
+from cinema.messages import serialize_messages
 from cinema.models import (
     AgeRating,
     Movie,
@@ -210,3 +214,61 @@ class SilverScreenServiceTests(TestCase):
         self.assertContains(response, "Pembayaran")
         self.assertContains(response, self.product.name)
         self.assertNotContains(response, self.inactive_product.name)
+
+    def test_full_page_messages_are_serialized_for_toasts(self):
+        response = self.client.post(reverse("cinema:booking", args=[self.showtime.id]), {"quantity": 0})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "django-messages-data")
+        self.assertContains(response, "Jumlah tiket harus 1 sampai 10.")
+
+    def test_htmx_messages_are_sent_in_trigger_header(self):
+        response = self.client.post(
+            reverse("cinema:booking", args=[self.showtime.id]),
+            {"quantity": 0},
+            headers={"HX-Request": "true"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        trigger = json.loads(response.headers["HX-Trigger"])
+        self.assertEqual(trigger["ss:messages"]["messages"][0]["message"], "Jumlah tiket harus 1 sampai 10.")
+        self.assertIn("error", trigger["ss:messages"]["messages"][0]["tags"])
+
+    def test_htmx_messages_are_consumed_after_trigger_header(self):
+        message_text = "Jumlah tiket harus 1 sampai 10."
+        self.client.post(
+            reverse("cinema:booking", args=[self.showtime.id]),
+            {"quantity": 0},
+            headers={"HX-Request": "true"},
+        )
+
+        response = self.client.get(reverse("cinema:movies"))
+
+        self.assertNotContains(response, message_text)
+
+    def test_htmx_redirect_preserves_messages_for_followup_response(self):
+        order = create_online_order(self.showtime.id, [self.seats[0].id], [])
+
+        response = self.client.post(
+            reverse("cinema:order_cancel", args=[order.number]),
+            headers={"HX-Request": "true"},
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertNotIn("HX-Trigger", response.headers)
+
+        response = self.client.get(response.headers["Location"], headers={"HX-Request": "true"})
+        trigger = json.loads(response.headers["HX-Trigger"])
+        self.assertEqual(trigger["ss:messages"]["messages"][0]["message"], "Pesanan dibatalkan.")
+
+
+class MessageSerializationTests(TestCase):
+    def test_message_level_and_tags_survive_serialization(self):
+        serialized = serialize_messages(
+            [Message(message_constants.ERROR, "Tidak valid.", extra_tags="booking")]
+        )
+
+        self.assertEqual(serialized[0]["message"], "Tidak valid.")
+        self.assertEqual(serialized[0]["level"], message_constants.ERROR)
+        self.assertIn("booking", serialized[0]["tags"])
+        self.assertIn("error", serialized[0]["tags"])
