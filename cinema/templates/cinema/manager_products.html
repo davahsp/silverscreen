@@ -1,0 +1,10 @@
+{% extends "cinema/base.html" %}
+{% load cinema_tags %}
+{% block title %}Produk{% endblock %}
+{% block content %}
+<div class="page-header"><div><h1 class="page-title">Produk</h1><p class="page-subtitle">Produk aktif muncul di booking/POS.</p></div><a class="button button-primary" href="{% url 'cinema:manager_product_new' %}">Tambah Produk</a></div>
+<div class="card"><div class="table-wrapper"><table>
+  <thead><tr><th>Nama</th><th>Kategori</th><th>Harga</th><th>Status</th><th></th></tr></thead>
+  <tbody>{% for product in products %}<tr><td>{{ product.name }}</td><td>{{ product.get_category_display }}</td><td>{{ product.price|rupiah }}</td><td>{% include "cinema/partials/status_badge.html" with status=product.is_active|yesno:"ACTIVE,INACTIVE" %}</td><td><a class="button button-secondary" href="{% url 'cinema:manager_product_edit' product.pk %}">Edit</a> <form method="post" action="{% url 'cinema:manager_product_toggle' product.pk %}" style="display:inline">{% csrf_token %}<button class="button button-secondary">Toggle</button></form></td></tr>{% empty %}<tr><td colspan="5">Belum ada produk.</td></tr>{% endfor %}</tbody>
+</table></div></div>
+{% endblock %}

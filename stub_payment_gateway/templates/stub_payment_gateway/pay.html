@@ -1,0 +1,30 @@
+{% load static cinema_tags %}
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MockPay Gateway</title>
+  <link rel="stylesheet" href="{% static 'stub_payment_gateway/css/payment-gateway.css' %}">
+</head>
+<body>
+  <main class="gw-page">
+    <header class="gw-header">
+      <div class="gw-logo"><div class="gw-logo-mark">PG</div><div><div class="gw-logo-text">MockPay Gateway</div><div class="gw-logo-sub">Stub Payment Provider</div></div></div>
+    </header>
+    <section class="gw-card">
+      <div class="gw-amount-label">Total Pembayaran</div>
+      <div class="gw-amount">{{ payment.amount|rupiah }}</div>
+      <div class="gw-field"><span class="gw-field-label">Gateway ID</span><span class="gw-field-value">{{ payment.gateway_payment_id }}</span></div>
+      <div class="gw-field"><span class="gw-field-label">Internal ID</span><span class="gw-field-value">{{ payment.internal_payment_id }}</span></div>
+      <div class="gw-field"><span class="gw-field-label">Expired</span><span class="gw-field-value">{{ payment.expired_at|date:"d M Y H:i" }}</span></div>
+      <div class="gw-status {{ payment.status|lower }}">{{ payment.get_status_display }}</div>
+      {% if payment.status == "WAITING_PAYMENT" %}
+        <form method="post" action="{% url 'stub_gateway:success' payment.gateway_payment_id %}">{% csrf_token %}<button class="gw-btn gw-btn-pay">Bayar Sekarang</button></form>
+        <form method="post" action="{% url 'stub_gateway:expire' payment.gateway_payment_id %}">{% csrf_token %}<button class="gw-btn gw-btn-expire">Simulate Expired</button></form>
+      {% endif %}
+      <a class="gw-btn gw-btn-back" href="{% url 'cinema:orders' %}">Kembali ke Silver Screen</a>
+    </section>
+  </main>
+</body>
+</html>

@@ -1,0 +1,33 @@
+{% extends "cinema/base.html" %}
+{% load cinema_tags %}
+{% block title %}Pilih Film{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Pilih Film</h1>
+    <p class="page-subtitle">Film aktif yang tersedia untuk pemesanan online.</p>
+  </div>
+</div>
+<div class="movie-grid">
+  {% for movie in movies %}
+    <article class="movie-card">
+      <div class="movie-poster">
+        <div>
+          <div class="movie-poster-genre">{{ movie.movie_theme.name }}</div>
+          <div class="movie-poster-title">{{ movie.title }}</div>
+        </div>
+      </div>
+      <div class="movie-card-body">
+        <strong>{{ movie.title }}</strong>
+        <div class="text-muted">{{ movie.get_age_rating_display }} · {{ movie.runtime_minutes }} menit</div>
+        <p>{{ movie.synopsis|truncatewords:22 }}</p>
+      </div>
+      <div class="card-footer">
+        <a class="button button-primary button-full" href="{% url 'cinema:movie_detail' movie.pk %}">Pilih Showtime</a>
+      </div>
+    </article>
+  {% empty %}
+    <div class="card"><div class="card-body">Belum ada film aktif.</div></div>
+  {% endfor %}
+</div>
+{% endblock %}

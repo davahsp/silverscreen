@@ -1,0 +1,27 @@
+{% extends "cinema/base.html" %}
+{% load cinema_tags %}
+{% block title %}Pesanan Saya{% endblock %}
+{% block content %}
+<div class="page-header"><div><h1 class="page-title">Pesanan Saya</h1><p class="page-subtitle">Status pesanan online dan onsite demo.</p></div></div>
+<div class="card">
+  <div class="table-wrapper">
+    <table>
+      <thead><tr><th>No. Pesanan</th><th>Sumber</th><th>Status</th><th>Total</th><th>Dibuat</th><th></th></tr></thead>
+      <tbody>
+        {% for order in orders %}
+          <tr>
+            <td class="font-mono">{{ order.number }}</td>
+            <td>{% include "cinema/partials/status_badge.html" with status=order.source %}</td>
+            <td>{% include "cinema/partials/status_badge.html" with status=order.status %}</td>
+            <td>{{ order.total_amount|rupiah }}</td>
+            <td>{{ order.created_at|date:"d M Y H:i" }}</td>
+            <td><a class="button button-secondary" href="{% url 'cinema:order_detail' order.number %}">Detail</a></td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="6">Belum ada pesanan.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

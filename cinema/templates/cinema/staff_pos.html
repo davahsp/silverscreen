@@ -1,0 +1,58 @@
+{% extends "cinema/base.html" %}
+{% load cinema_tags %}
+{% block title %}Counter POS{% endblock %}
+{% block content %}
+<div class="page-header"><div><h1 class="page-title">Counter POS</h1><p class="page-subtitle">Order onsite dibuat setelah pelanggan membayar dan langsung mencetak tiket.</p></div></div>
+<div class="card mb-4">
+  <div class="card-body">
+    <form method="get">
+      <div class="form-group">
+        <label class="form-label">Showtime</label>
+        <select name="showtime">
+          {% for item in showtimes %}
+            <option value="{{ item.id }}" {% if showtime.id == item.id %}selected{% endif %}>{{ item.movie.title }} · {{ item.studio.name }} · {{ item.start_at|date:"d M H:i" }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <button class="button button-secondary">Pilih Showtime</button>
+    </form>
+  </div>
+</div>
+{% if showtime %}
+<form method="post">
+  {% csrf_token %}
+  <input type="hidden" name="showtime" value="{{ showtime.id }}">
+  <div class="pos-layout">
+    <div class="card">
+      <div class="card-header">Pilih Kursi - {{ showtime.movie.title }}</div>
+      <div class="card-body">
+        <div class="seat-screen">Layar</div>
+        <div class="seat-grid">
+          {% for seat in seats %}
+            {% with occupied=occupancy|seat_status:seat.id %}
+              <label class="seat-choice">
+                <input type="checkbox" name="seats" value="{{ seat.id }}" {% if occupied or not seat.is_active %}disabled{% endif %}>
+                <span class="seat {% if occupied %}unavailable{% elif not seat.is_active %}disabled{% endif %}">{{ seat.number }}</span>
+              </label>
+            {% endwith %}
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header">Ringkasan & Add-ons</div>
+      <div class="card-body">
+        <div class="order-summary-row"><span>Tiket</span><strong>{{ showtime.price|rupiah }}</strong></div>
+        {% for product in products %}
+          <div class="form-group">
+            <label class="form-label">{{ product.name }} · {{ product.price|rupiah }}</label>
+            <input type="number" min="0" value="0" name="product_{{ product.id }}">
+          </div>
+        {% endfor %}
+        <button class="button button-primary button-full">Buat & Cetak Tiket</button>
+      </div>
+    </div>
+  </div>
+</form>
+{% endif %}
+{% endblock %}

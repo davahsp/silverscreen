@@ -1,0 +1,22 @@
+{% extends "cinema/base.html" %}
+{% load cinema_tags %}
+{% block title %}Antrian Refund{% endblock %}
+{% block content %}
+<div class="page-header"><div><h1 class="page-title">Antrian Refund</h1><p class="page-subtitle">Refund online berbayar diselesaikan manual oleh staff.</p></div></div>
+<div class="card"><div class="table-wrapper"><table>
+  <thead><tr><th>Payment</th><th>Order</th><th>Amount</th><th>Status</th><th></th></tr></thead>
+  <tbody>
+    {% for payment in payments %}
+      <tr>
+        <td class="font-mono">{{ payment.internal_payment_id }}</td>
+        <td>{{ payment.order.number }}</td>
+        <td>{{ payment.amount|rupiah }}</td>
+        <td>{% include "cinema/partials/status_badge.html" with status=payment.status %}</td>
+        <td><form method="post" action="{% url 'cinema:refund_complete' payment.pk %}">{% csrf_token %}<button class="button button-primary">Tandai Refund Selesai</button></form></td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="5">Tidak ada refund pending.</td></tr>
+    {% endfor %}
+  </tbody>
+</table></div></div>
+{% endblock %}

@@ -1,0 +1,11 @@
+{% extends "cinema/base.html" %}
+{% load cinema_tags %}
+{% block title %}Cari Pesanan{% endblock %}
+{% block content %}
+<div class="page-header"><div><h1 class="page-title">Cari Pesanan</h1><p class="page-subtitle">Cari berdasarkan nomor pesanan.</p></div></div>
+<div class="card mb-4"><div class="card-body"><form method="get"><input name="q" value="{{ q }}" placeholder="SS-2026-0001"><button class="button button-primary mt-4">Cari</button></form></div></div>
+<div class="card"><div class="table-wrapper"><table>
+  <thead><tr><th>Order</th><th>Status</th><th>Total</th><th></th></tr></thead>
+  <tbody>{% for order in orders %}<tr><td>{{ order.number }}</td><td>{% include "cinema/partials/status_badge.html" with status=order.status %}</td><td>{{ order.total_amount|rupiah }}</td><td><a class="button button-secondary" href="{% url 'cinema:order_detail' order.number %}">Detail</a></td></tr>{% empty %}<tr><td colspan="4">Belum ada hasil.</td></tr>{% endfor %}</tbody>
+</table></div></div>
+{% endblock %}

@@ -1,0 +1,39 @@
+{% extends "cinema/base.html" %}
+{% load cinema_tags %}
+{% block title %}{{ movie.title }}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">{{ movie.title }}</h1>
+    <p class="page-subtitle">{{ movie.movie_theme.name }} · {{ movie.get_age_rating_display }} · {{ movie.runtime_minutes }} menit</p>
+  </div>
+  <a class="button button-secondary" href="{% url 'cinema:movies' %}">Kembali</a>
+</div>
+<div class="grid-2">
+  <div class="card"><div class="movie-poster"><div><div class="movie-poster-genre">{{ movie.movie_theme.name }}</div><div class="movie-poster-title">{{ movie.title }}</div></div></div></div>
+  <div class="card">
+    <div class="card-header">Sinopsis</div>
+    <div class="card-body">{{ movie.synopsis }}</div>
+  </div>
+</div>
+<div class="card mt-4">
+  <div class="card-header">Showtime Aktif</div>
+  <div class="card-body">
+    <div class="grid-2">
+      {% for showtime in showtimes %}
+        <div class="card">
+          <div class="card-body">
+            <strong class="font-mono">{{ showtime.start_at|date:"H:i" }} - {{ showtime.end_at|date:"H:i" }}</strong>
+            <div>{{ showtime.studio.name }} · {{ showtime.studio.studio_type.name }}</div>
+            <div class="text-muted">{{ showtime.start_at|date:"d M Y" }}</div>
+            <div class="order-summary-total"><span>Harga</span><span>{{ showtime.price|rupiah }}</span></div>
+          </div>
+          <div class="card-footer"><a class="button button-primary button-full" href="{% url 'cinema:booking' showtime.pk %}">Pesan Tiket</a></div>
+        </div>
+      {% empty %}
+        <p>Belum ada showtime aktif.</p>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}

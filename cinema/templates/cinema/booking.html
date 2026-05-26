@@ -1,0 +1,60 @@
+{% extends "cinema/base.html" %}
+{% load cinema_tags %}
+{% block title %}Booking{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Booking Tiket</h1>
+    <p class="page-subtitle">{{ showtime.movie.title }} · {{ showtime.start_at|date:"d M Y H:i" }} · {{ showtime.studio.name }}</p>
+  </div>
+</div>
+<form method="post">
+  {% csrf_token %}
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-header">Pilih Kursi</div>
+      <div class="card-body">
+        <div class="seat-screen">Layar</div>
+        <div class="seat-grid">
+          {% for seat in seats %}
+            {% with occupied=occupancy|seat_status:seat.id %}
+              <label class="seat-choice">
+                <input type="checkbox" name="seats" value="{{ seat.id }}" {% if occupied or not seat.is_active %}disabled{% endif %}>
+                <span class="seat {% if occupied %}unavailable{% elif not seat.is_active %}disabled{% endif %}">{{ seat.number }}</span>
+              </label>
+            {% endwith %}
+          {% endfor %}
+        </div>
+        <div class="seat-legend">
+          <span>Tersedia</span><span>Dipilih</span><span>Ditahan/Terjual</span><span>Nonaktif</span>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="card mb-4">
+        <div class="card-header">Add-ons</div>
+        <div class="card-body addon-grid">
+          {% for product in products %}
+            <div class="addon-card">
+              <strong>{{ product.name }}</strong>
+              <div class="text-muted">{{ product.get_category_display }} · {{ product.price|rupiah }}</div>
+              <input class="form-control mt-4" type="number" min="0" value="0" name="product_{{ product.id }}">
+            </div>
+          {% empty %}
+            <p>Tidak ada produk aktif.</p>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">Ringkasan</div>
+        <div class="card-body">
+          <div class="order-summary-row"><span>Harga tiket</span><strong>{{ showtime.price|rupiah }}</strong></div>
+          <div class="order-summary-row"><span>Biaya layanan</span><strong>Rp5.000</strong></div>
+          <p class="text-muted">Total dihitung ulang setelah kursi dan add-ons dikirim.</p>
+          <button class="button button-primary button-full">Buat Pesanan Online</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</form>
+{% endblock %}

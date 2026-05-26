@@ -1,0 +1,25 @@
+{% extends "cinema/base.html" %}
+{% block title %}Studio{% endblock %}
+{% block content %}
+<div class="page-header"><div><h1 class="page-title">Studio & Layout</h1><p class="page-subtitle">Centang sel yang menjadi kursi. Nomor kursi dibuat otomatis per baris.</p></div></div>
+<div class="card">
+  <div class="card-body">
+    <form method="post">
+      {% csrf_token %}
+      {{ form.as_p }}
+      <div class="form-group">
+        <label class="form-label">Layout kursi MVP</label>
+        <p class="text-muted">Untuk studio baru, pilih minimal satu sel. Untuk edit, simpan ulang akan mengganti layout.</p>
+        <div class="grid-4">
+          {% for y in "01234567" %}
+            {% for x in "0123456789" %}
+              <label class="addon-card"><input type="checkbox" name="seat_cells" value="{{ forloop.parentloop.counter0 }},{{ forloop.counter0 }}" checked> R{{ forloop.parentloop.counter }}C{{ forloop.counter }}</label>
+            {% endfor %}
+          {% endfor %}
+        </div>
+      </div>
+      <button class="button button-primary">Simpan Studio</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,10 @@
+{% extends "cinema/base.html" %}
+{% load cinema_tags %}
+{% block title %}Studio{% endblock %}
+{% block content %}
+<div class="page-header"><div><h1 class="page-title">Studio</h1><p class="page-subtitle">Kapasitas dihitung dari kursi aktif.</p></div><a class="button button-primary" href="{% url 'cinema:manager_studio_new' %}">Tambah Studio</a></div>
+<div class="card"><div class="table-wrapper"><table>
+  <thead><tr><th>Nama</th><th>Tipe</th><th>Grid</th><th>Kapasitas</th><th>Status</th><th></th></tr></thead>
+  <tbody>{% for studio in studios %}<tr><td>{{ studio.name }}</td><td>{{ studio.studio_type.name }}</td><td>{{ studio.grid_rows }} x {{ studio.grid_cols }}</td><td>{{ studio.capacity }}</td><td>{% include "cinema/partials/status_badge.html" with status=studio.is_active|yesno:"ACTIVE,INACTIVE" %}</td><td><a class="button button-secondary" href="{% url 'cinema:manager_studio_edit' studio.pk %}">Edit</a> <form method="post" action="{% url 'cinema:manager_studio_toggle' studio.pk %}" style="display:inline">{% csrf_token %}<button class="button button-secondary">Toggle</button></form></td></tr>{% empty %}<tr><td colspan="6">Belum ada studio.</td></tr>{% endfor %}</tbody>
+</table></div></div>
+{% endblock %}

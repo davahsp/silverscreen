@@ -1,0 +1,10 @@
+{% extends "cinema/base.html" %}
+{% load cinema_tags %}
+{% block title %}Manajemen Film{% endblock %}
+{% block content %}
+<div class="page-header"><div><h1 class="page-title">Film</h1><p class="page-subtitle">Kelola katalog film.</p></div><a class="button button-primary" href="{% url 'cinema:manager_movie_new' %}">Tambah Film</a></div>
+<div class="card"><div class="table-wrapper"><table>
+  <thead><tr><th>Judul</th><th>Tema</th><th>Rating</th><th>Durasi</th><th>Status</th><th></th></tr></thead>
+  <tbody>{% for movie in movies %}<tr><td>{{ movie.title }}</td><td>{{ movie.movie_theme.name }}</td><td>{{ movie.get_age_rating_display }}</td><td>{{ movie.runtime_minutes }} menit</td><td>{% include "cinema/partials/status_badge.html" with status=movie.is_active|yesno:"ACTIVE,INACTIVE" %}</td><td><a class="button button-secondary" href="{% url 'cinema:manager_movie_edit' movie.pk %}">Edit</a> <form method="post" action="{% url 'cinema:manager_movie_toggle' movie.pk %}" style="display:inline">{% csrf_token %}<button class="button button-secondary">Toggle</button></form></td></tr>{% empty %}<tr><td colspan="6">Belum ada film.</td></tr>{% endfor %}</tbody>
+</table></div></div>
+{% endblock %}

@@ -1,0 +1,59 @@
+{% extends "cinema/base.html" %}
+{% load cinema_tags %}
+{% block title %}{{ order.number }}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">{{ order.number }}</h1>
+    <p class="page-subtitle">{{ order.created_at|date:"d M Y H:i" }} · {{ order.source }}</p>
+  </div>
+  <div>
+    {% include "cinema/partials/status_badge.html" with status=order.status %}
+  </div>
+</div>
+<div class="grid-2">
+  <div class="card">
+    <div class="card-header">Tiket</div>
+    <div class="card-body">
+      {% for ticket in order.tickets.all %}
+        <div class="ticket-card mb-4">
+          <div class="ticket-card-header">
+            <strong>{{ ticket.showtime.movie.title }}</strong>
+            <div>{{ ticket.showtime.studio.name }} · {{ ticket.showtime.start_at|date:"d M Y H:i" }}</div>
+          </div>
+          <div class="ticket-red-stripe"></div>
+          <div class="ticket-body">
+            <div class="grid-2">
+              <div><div class="text-muted">Kursi</div><span class="ticket-seat-badge">{{ ticket.seat.number }}</span></div>
+              <div><div class="text-muted">Status</div>{% include "cinema/partials/status_badge.html" with status=ticket.status %}</div>
+            </div>
+            <div class="mt-4"><div class="text-muted">Kode Tiket</div><div class="ticket-code">{{ ticket.code }}</div></div>
+            {% if ticket.printed_at %}<div class="text-muted mt-4">Dicetak: {{ ticket.printed_at|date:"d M Y H:i" }}</div>{% endif %}
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+  <div>
+    <div class="card mb-4">
+      <div class="card-header">Pembayaran</div>
+      <div class="card-body">
+        {% include "cinema/partials/status_badge.html" with status=order.payment.status %}
+        <div class="order-summary-row"><span>Internal ID</span><strong class="font-mono">{{ order.payment.internal_payment_id }}</strong></div>
+        <div class="order-summary-row"><span>Gateway ID</span><strong class="font-mono">{{ order.payment.gateway_payment_id|default:"-" }}</strong></div>
+        <div class="order-summary-total"><span>Total</span><span>{{ order.payment.amount|rupiah }}</span></div>
+        {% if order.payment.payment_url and order.payment.status == "UNPAID" %}
+          <a class="button button-gold button-full mt-4" href="{{ order.payment.payment_url }}">Buka Halaman Gateway</a>
+        {% endif %}
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header">Aksi</div>
+      <div class="card-body">
+        <form method="post" action="{% url 'cinema:order_print' order.number %}" class="mb-4">{% csrf_token %}<button class="button button-primary button-full">Cetak Tiket</button></form>
+        <form method="post" action="{% url 'cinema:order_cancel' order.number %}">{% csrf_token %}<button class="button button-danger button-full">Batalkan Pesanan</button></form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

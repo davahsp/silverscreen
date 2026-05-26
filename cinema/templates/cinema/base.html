@@ -1,0 +1,59 @@
+{% load static %}
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Silver Screen{% endblock %}</title>
+  <link rel="stylesheet" href="{% static 'cinema/css/base.css' %}">
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <a class="topbar-logo" href="{% url 'cinema:movies' %}">
+        <div class="topbar-logo-mark">SS</div>
+        <div>
+          <div class="topbar-logo-text">Silver Screen</div>
+          <div class="topbar-logo-sub">Cinema System</div>
+        </div>
+      </a>
+      <div class="topbar-spacer"></div>
+      <nav class="role-switcher">
+        {% for key,label in role_labels.items %}
+          <a class="role-btn {% if current_role == key %}active{% endif %}" href="{% url 'cinema:roles' %}?role={{ key }}">{{ label }}</a>
+        {% endfor %}
+      </nav>
+    </header>
+    <nav class="navbar">
+      {% if current_role == "customer" %}
+        <a class="nav-tab" href="{% url 'cinema:movies' %}">Pilih Film</a>
+        <a class="nav-tab" href="{% url 'cinema:orders' %}">Pesanan Saya</a>
+      {% elif current_role == "staff" %}
+        <a class="nav-tab" href="{% url 'cinema:counter_pos' %}">Counter POS</a>
+        <a class="nav-tab" href="{% url 'cinema:refund_queue' %}">Antrian Refund</a>
+        <a class="nav-tab" href="{% url 'cinema:order_lookup' %}">Cari Pesanan</a>
+      {% elif current_role == "scheduler" %}
+        <a class="nav-tab" href="{% url 'cinema:scheduler_showtimes' %}">Daftar Showtime</a>
+        <a class="nav-tab" href="{% url 'cinema:scheduler_showtime_new' %}">Jadwalkan</a>
+      {% elif current_role == "manager" %}
+        <a class="nav-tab" href="{% url 'cinema:manager_dashboard' %}">Dashboard</a>
+        <a class="nav-tab" href="{% url 'cinema:manager_movies' %}">Film</a>
+        <a class="nav-tab" href="{% url 'cinema:manager_products' %}">Produk</a>
+        <a class="nav-tab" href="{% url 'cinema:manager_studios' %}">Studio</a>
+      {% endif %}
+    </nav>
+    <main class="main">
+      <div class="main-inner">
+        {% if messages %}
+          <div class="messages">
+            {% for message in messages %}
+              <div class="message {{ message.tags }}">{{ message }}</div>
+            {% endfor %}
+          </div>
+        {% endif %}
+        {% block content %}{% endblock %}
+      </div>
+    </main>
+  </div>
+</body>
+</html>

@@ -1,0 +1,14 @@
+{% extends "cinema/base.html" %}
+{% load cinema_tags %}
+{% block title %}Daftar Showtime{% endblock %}
+{% block content %}
+<div class="page-header"><div><h1 class="page-title">Daftar Showtime</h1><p class="page-subtitle">Showtime nonaktif tetap terlihat sebagai riwayat scheduler.</p></div><a class="button button-primary" href="{% url 'cinema:scheduler_showtime_new' %}">Jadwalkan</a></div>
+<div class="card"><div class="table-wrapper"><table>
+  <thead><tr><th>Film</th><th>Studio</th><th>Mulai</th><th>Selesai</th><th>Harga</th><th>Status</th><th></th></tr></thead>
+  <tbody>
+    {% for showtime in showtimes %}
+      <tr><td>{{ showtime.movie.title }}</td><td>{{ showtime.studio.name }}</td><td>{{ showtime.start_at|date:"d M H:i" }}</td><td>{{ showtime.end_at|date:"H:i" }}</td><td>{{ showtime.price|rupiah }}</td><td>{% include "cinema/partials/status_badge.html" with status=showtime.is_active|yesno:"ACTIVE,INACTIVE" %}</td><td><a class="button button-secondary" href="{% url 'cinema:scheduler_showtime_edit' showtime.pk %}">Edit</a> <form method="post" action="{% url 'cinema:scheduler_showtime_disable' showtime.pk %}" style="display:inline">{% csrf_token %}<button class="button button-danger">Nonaktifkan</button></form></td></tr>
+    {% empty %}<tr><td colspan="7">Belum ada showtime.</td></tr>{% endfor %}
+  </tbody>
+</table></div></div>
+{% endblock %}

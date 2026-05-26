@@ -1,0 +1,21 @@
+body { margin:0; }
+.gw-page { min-height:100vh; background:#0f172a; color:#f8fafc; font-family:'Helvetica Neue',Helvetica,Arial,sans-serif; display:flex; flex-direction:column; align-items:center; padding:40px 16px; }
+.gw-header { text-align:center; margin-bottom:32px; }
+.gw-logo { display:inline-flex; align-items:center; gap:12px; margin-bottom:10px; }
+.gw-logo-mark { width:40px; height:40px; border-radius:10px; background:linear-gradient(135deg,#3b82f6,#1d4ed8); display:grid; place-items:center; font-weight:900; }
+.gw-logo-text { font-size:22px; font-weight:900; }
+.gw-logo-sub { color:#64748b; font-size:12px; letter-spacing:.05em; }
+.gw-card { background:#1e293b; border:1px solid #334155; border-radius:18px; padding:32px; width:100%; max-width:480px; box-shadow:0 25px 50px rgba(0,0,0,.4); }
+.gw-amount-label { text-align:center; color:#64748b; text-transform:uppercase; letter-spacing:.08em; font-size:12px; }
+.gw-amount { text-align:center; font-size:40px; font-weight:900; margin:16px 0; }
+.gw-field { display:flex; justify-content:space-between; gap:16px; padding:9px 0; border-bottom:1px solid #334155; font-size:13.5px; }
+.gw-field-label { color:#94a3b8; }
+.gw-field-value { font-family:'Courier New',monospace; font-weight:700; }
+.gw-status { text-align:center; margin:20px 0; font-weight:900; }
+.gw-status.waiting_payment { color:#fbbf24; }
+.gw-status.paid { color:#34d399; }
+.gw-status.expired { color:#94a3b8; }
+.gw-btn { display:block; width:100%; padding:14px; border-radius:10px; border:0; font-weight:900; font-size:15px; cursor:pointer; text-align:center; margin-top:12px; }
+.gw-btn-pay { background:linear-gradient(135deg,#3b82f6,#1d4ed8); color:#fff; }
+.gw-btn-expire { background:#1e293b; color:#94a3b8; border:1px solid #334155; }
+.gw-btn-back { background:transparent; color:#94a3b8; }
