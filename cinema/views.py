@@ -133,10 +133,16 @@ class MovieDetailView(RoleMixin, DetailView):
     required_role = "customer"
     model = Movie
     template_name = "cinema/movie_detail.html"
+    htmx_template_name = "cinema/partials/movie_showtime_list.html"
     context_object_name = "movie"
 
     def get_queryset(self):
         return Movie.objects.filter(is_active=True).select_related("movie_theme")
+
+    def get_template_names(self):
+        if self.request.headers.get("HX-Request") == "true":
+            return [self.htmx_template_name]
+        return super().get_template_names()
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -164,6 +170,10 @@ class MovieDetailView(RoleMixin, DetailView):
             for date in window_dates
         ]
         context["selected_showtime_date"] = selected_date
+        context["selected_showtime_date_value"] = selected_date.isoformat()
+        context["showtime_list_initial_url"] = None
+        if self.request.headers.get("HX-Request") != "true":
+            context["showtime_list_initial_url"] = self.request.path
         context["booking_window_days"] = BOOKING_WINDOW_DAYS
         context["showtimes"] = ShowTime.objects.filter(
             movie=self.object,

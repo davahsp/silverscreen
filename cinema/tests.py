@@ -261,7 +261,34 @@ class SilverScreenServiceTests(TestCase):
         self.assertContains(response, "Studio 2")
         self.assertContains(response, "Rp50.000")
         self.assertNotContains(response, "Studio 1")
-        self.assertContains(response, f'?date={selected_date}')
+        self.assertContains(response, f'value="{selected_date}"')
+        self.assertContains(response, 'hx-include="#showtime-date-filter"')
+
+    def test_movie_detail_htmx_replaces_showtime_list_for_selected_day(self):
+        second_studio = Studio.objects.create(name="Studio 2", studio_type=self.studio_type, grid_rows=1, grid_cols=1)
+        save_studio_layout(second_studio, {(0, 0)})
+        selected_showtime = save_showtime(
+            movie=self.movie,
+            studio=second_studio,
+            start_at=timezone.now() + timedelta(days=2, hours=3),
+            price=50000,
+        )
+        selected_date = timezone.localtime(selected_showtime.start_at).date().isoformat()
+
+        response = self.client.get(
+            reverse("cinema:movie_detail", args=[self.movie.id]),
+            {"date": selected_date},
+            headers={"HX-Request": "true"},
+        )
+
+        self.assertContains(response, 'id="showtime-list"')
+        self.assertContains(response, "Studio 2")
+        self.assertNotContains(response, "Studio 1")
+        self.assertNotContains(response, 'id="showtime-date-filter"')
+        self.assertNotContains(response, "hx-push-url")
+        self.assertNotContains(response, 'hx-trigger="load"')
+        self.assertNotContains(response, "<!doctype html>")
+        self.assertNotContains(response, "Sinopsis")
 
     def test_full_page_messages_are_serialized_for_toasts(self):
         response = self.client.post(reverse("cinema:booking", args=[self.showtime.id]), {"quantity": 0})

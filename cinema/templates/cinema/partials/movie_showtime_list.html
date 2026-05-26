@@ -1,0 +1,22 @@
+{% load cinema_tags %}
+<div
+  id="showtime-list"
+  class="card-body"
+  {% if initial_load_url %}hx-get="{{ initial_load_url }}" hx-trigger="load" hx-include="#showtime-date-filter" hx-swap="outerHTML"{% endif %}
+>
+  <div class="grid-2">
+    {% for showtime in showtimes %}
+      <div class="card">
+        <div class="card-body">
+          <strong class="font-mono">{{ showtime.start_at|date:"H:i" }} - {{ showtime.end_at|date:"H:i" }}</strong>
+          <div>{{ showtime.studio.name }} &middot; {{ showtime.studio.studio_type.name }}</div>
+          <div class="text-muted">{{ showtime.start_at|date:"d M Y" }}</div>
+          <div class="order-summary-total"><span>Harga</span><span>{{ showtime.price|rupiah }}</span></div>
+        </div>
+        <div class="card-footer"><a class="button button-primary button-full" href="{% url 'cinema:booking' showtime.pk %}">Pesan Tiket</a></div>
+      </div>
+    {% empty %}
+      <p>Belum ada jam tayang pada tanggal ini.</p>
+    {% endfor %}
+  </div>
+</div>

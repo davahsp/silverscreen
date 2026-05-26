@@ -1,0 +1,24 @@
+<form id="showtime-date-filter" class="showtime-days" action="{% url 'cinema:movie_detail' movie.pk %}" method="get" aria-label="Tanggal jam tayang">
+  {% for day in showtime_days %}
+    <input
+      id="showtime-day-{{ day.value }}"
+      class="showtime-day-input"
+      type="radio"
+      name="date"
+      value="{{ day.value }}"
+      {% if day.is_selected %}checked{% endif %}
+      hx-get="{% url 'cinema:movie_detail' movie.pk %}"
+      hx-include="#showtime-date-filter"
+      hx-target="#showtime-list"
+      hx-swap="outerHTML"
+      hx-trigger="change"
+    >
+    <label
+      class="showtime-day{% if not day.has_showtimes %} muted{% endif %}"
+      for="showtime-day-{{ day.value }}"
+    >
+      <span>{{ day.date|date:"D" }}</span>
+      <strong>{{ day.date|date:"d M" }}</strong>
+    </label>
+  {% endfor %}
+</form>

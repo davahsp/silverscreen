@@ -233,10 +233,11 @@ The UI follows `silverscreen-claude-design/`:
 - No Bootstrap
 - No shadcn/ui
 - No external UI component library
+- HTMX progressively enhances date-based jam tayang pagination on movie detail pages
 - Topbar with role switcher
 - Role-aware horizontal navigation
 - Customer movie cards use full-card navigation with hover/focus ticket call-to-action footers
-- Movie detail showtimes are paginated by date across the shared 14-day booking window
+- Movie detail jam tayang is paginated by date across the shared 14-day booking window; the date filter stays statically rendered and HTMX uses `hx-include` to refresh only the list area
 - Mobile bottom navigation behavior
 - Cards, tables, forms, status badges, seat grid, POS layout, ticket preview, and gateway page styling
 
@@ -244,6 +245,11 @@ CSS files:
 
 - `cinema/static/cinema/css/base.css`
 - `stub_payment_gateway/static/stub_payment_gateway/css/payment-gateway.css`
+
+JavaScript:
+
+- `cinema/static/cinema/js/toasts.js`
+- HTMX is loaded on the base template for progressive fragment swaps
 
 ## Setup
 
@@ -313,6 +319,7 @@ Current test coverage includes:
 - Inactive movie/product filtering
 - Customer movie filtering by active showtimes in the 14-day booking window
 - Movie detail day-based showtime pagination
+- HTMX movie detail jam tayang list replacement
 - Multi-phase booking add-ons visibility
 
 ## Current Limitations
