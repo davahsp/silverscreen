@@ -37,6 +37,15 @@ body { background:var(--bg); color:var(--text-1); font:14px/1.55 var(--font); -w
 .card-header { padding:16px 20px; border-bottom:1px solid var(--border-lt); font-weight:800; display:flex; justify-content:space-between; gap:12px; align-items:center; }
 .card-body { padding:20px; }
 .card-footer { padding:12px 20px; background:var(--bg-subtle); border-top:1px solid var(--border-lt); }
+.showtime-days { display:flex; gap:8px; padding:14px 20px; border-bottom:1px solid var(--border-lt); overflow-x:auto; background:var(--bg-subtle); }
+.showtime-day { flex:0 0 auto; min-width:68px; padding:7px 10px; border:1.5px solid var(--border); border-radius:var(--r-sm); background:#fff; color:var(--text-2); text-align:center; }
+.showtime-day span, .showtime-day strong { display:block; line-height:1.25; }
+.showtime-day span { font-size:11.5px; font-weight:800; color:var(--text-3); text-transform:uppercase; }
+.showtime-day strong { margin-top:2px; font-size:13px; color:var(--text-1); }
+.showtime-day:hover, .showtime-day:focus-visible { border-color:var(--red); color:var(--red); outline:none; }
+.showtime-day.active { background:var(--red); border-color:var(--red); color:#fff; }
+.showtime-day.active span, .showtime-day.active strong { color:#fff; }
+.showtime-day.muted:not(.active) { opacity:.58; }
 .grid-2 { display:grid; grid-template-columns:repeat(2,1fr); gap:16px; }
 .grid-3 { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; }
 .grid-4 { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; }

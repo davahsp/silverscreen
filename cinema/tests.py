@@ -8,6 +8,7 @@ from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
 
+from cinema.constants import BOOKING_WINDOW_DAYS
 from cinema.messages import serialize_messages
 from cinema.models import (
     AgeRating,
@@ -214,6 +215,53 @@ class SilverScreenServiceTests(TestCase):
         self.assertContains(response, "Pembayaran")
         self.assertContains(response, self.product.name)
         self.assertNotContains(response, self.inactive_product.name)
+
+    def test_movie_index_only_shows_movies_with_active_showtimes_in_booking_window(self):
+        future_movie = Movie.objects.create(
+            title="Film Bulan Depan",
+            synopsis="Belum dapat dipesan.",
+            age_rating=AgeRating.R13,
+            runtime_minutes=95,
+            movie_theme=self.movie.movie_theme,
+        )
+        no_showtime_movie = Movie.objects.create(
+            title="Film Tanpa Jadwal",
+            synopsis="Tidak memiliki showtime.",
+            age_rating=AgeRating.R13,
+            runtime_minutes=95,
+            movie_theme=self.movie.movie_theme,
+        )
+        save_showtime(
+            movie=future_movie,
+            studio=self.studio,
+            start_at=timezone.now() + timedelta(days=BOOKING_WINDOW_DAYS + 1),
+            price=45000,
+        )
+
+        response = self.client.get(reverse("cinema:movies"))
+
+        self.assertContains(response, self.movie.title)
+        self.assertNotContains(response, future_movie.title)
+        self.assertNotContains(response, no_showtime_movie.title)
+
+    def test_movie_detail_paginates_showtimes_by_day_inside_booking_window(self):
+        second_studio = Studio.objects.create(name="Studio 2", studio_type=self.studio_type, grid_rows=1, grid_cols=1)
+        save_studio_layout(second_studio, {(0, 0)})
+        selected_start = timezone.now() + timedelta(days=2, hours=3)
+        selected_showtime = save_showtime(
+            movie=self.movie,
+            studio=second_studio,
+            start_at=selected_start,
+            price=50000,
+        )
+        selected_date = timezone.localtime(selected_showtime.start_at).date().isoformat()
+
+        response = self.client.get(reverse("cinema:movie_detail", args=[self.movie.id]), {"date": selected_date})
+
+        self.assertContains(response, "Studio 2")
+        self.assertContains(response, "Rp50.000")
+        self.assertNotContains(response, "Studio 1")
+        self.assertContains(response, f'?date={selected_date}')
 
     def test_full_page_messages_are_serialized_for_toasts(self):
         response = self.client.post(reverse("cinema:booking", args=[self.showtime.id]), {"quantity": 0})

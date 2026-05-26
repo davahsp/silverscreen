@@ -5,7 +5,7 @@
 <div class="page-header">
   <div>
     <h1 class="page-title">{{ movie.title }}</h1>
-    <p class="page-subtitle">{{ movie.movie_theme.name }} · {{ movie.get_age_rating_display }} · {{ movie.runtime_minutes }} menit</p>
+    <p class="page-subtitle">{{ movie.movie_theme.name }} &middot; {{ movie.get_age_rating_display }} &middot; {{ movie.runtime_minutes }} menit</p>
   </div>
   <a class="button button-secondary" href="{% url 'cinema:movies' %}">Kembali</a>
 </div>
@@ -17,21 +17,32 @@
   </div>
 </div>
 <div class="card mt-4">
-  <div class="card-header">Showtime Aktif</div>
+  <div class="card-header">
+    <span>Jam Tayang Aktif</span>
+    <span class="text-muted">{{ booking_window_days }} hari ke depan</span>
+  </div>
+  <div class="showtime-days" aria-label="Tanggal showtime">
+    {% for day in showtime_days %}
+      <a class="showtime-day{% if day.is_selected %} active{% endif %}{% if not day.has_showtimes %} muted{% endif %}" href="?date={{ day.value }}">
+        <span>{{ day.date|date:"D" }}</span>
+        <strong>{{ day.date|date:"d M" }}</strong>
+      </a>
+    {% endfor %}
+  </div>
   <div class="card-body">
     <div class="grid-2">
       {% for showtime in showtimes %}
         <div class="card">
           <div class="card-body">
             <strong class="font-mono">{{ showtime.start_at|date:"H:i" }} - {{ showtime.end_at|date:"H:i" }}</strong>
-            <div>{{ showtime.studio.name }} · {{ showtime.studio.studio_type.name }}</div>
+            <div>{{ showtime.studio.name }} &middot; {{ showtime.studio.studio_type.name }}</div>
             <div class="text-muted">{{ showtime.start_at|date:"d M Y" }}</div>
             <div class="order-summary-total"><span>Harga</span><span>{{ showtime.price|rupiah }}</span></div>
           </div>
           <div class="card-footer"><a class="button button-primary button-full" href="{% url 'cinema:booking' showtime.pk %}">Pesan Tiket</a></div>
         </div>
       {% empty %}
-        <p>Belum ada showtime aktif.</p>
+        <p>Belum ada showtime aktif pada tanggal ini.</p>
       {% endfor %}
     </div>
   </div>

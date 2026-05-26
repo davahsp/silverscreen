@@ -1,15 +1,19 @@
 import json
+from datetime import datetime, timedelta
 
 from django.contrib import messages
 from django.core.exceptions import ValidationError
+from django.db.models import Exists, OuterRef
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse_lazy
+from django.utils import timezone
 from django.views import View
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 from django.views.generic import CreateView, DetailView, FormView, ListView, TemplateView, UpdateView
 
+from .constants import BOOKING_WINDOW_DAYS
 from .forms import MovieForm, ProductForm, RoleForm, ShowTimeForm, StudioForm
 from .models import (
     Movie,
@@ -35,6 +39,26 @@ ROLE_LABELS = {
     "scheduler": "Penjadwal",
     "manager": "Manajer",
 }
+
+
+def booking_window_dates():
+    today = timezone.localdate()
+    return [today + timedelta(days=offset) for offset in range(BOOKING_WINDOW_DAYS)]
+
+
+def booking_window_date_range():
+    dates = booking_window_dates()
+    return dates[0], dates[-1]
+
+
+def parse_booking_date(value, allowed_dates):
+    if not value:
+        return None
+    try:
+        selected_date = datetime.strptime(value, "%Y-%m-%d").date()
+    except ValueError:
+        return None
+    return selected_date if selected_date in allowed_dates else None
 
 
 def selected_role(request):
@@ -89,7 +113,20 @@ class MovieListView(RoleMixin, ListView):
     context_object_name = "movies"
 
     def get_queryset(self):
-        return Movie.objects.filter(is_active=True).select_related("movie_theme")
+        start_date, end_date = booking_window_date_range()
+        active_showtimes = ShowTime.objects.filter(
+            movie=OuterRef("pk"),
+            is_active=True,
+            studio__is_active=True,
+            start_at__date__gte=start_date,
+            start_at__date__lte=end_date,
+        )
+        return (
+            Movie.objects.filter(is_active=True)
+            .annotate(has_bookable_showtime=Exists(active_showtimes))
+            .filter(has_bookable_showtime=True)
+            .select_related("movie_theme")
+        )
 
 
 class MovieDetailView(RoleMixin, DetailView):
@@ -103,10 +140,36 @@ class MovieDetailView(RoleMixin, DetailView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        window_dates = booking_window_dates()
+        active_dates = set(
+            ShowTime.objects.filter(
+                movie=self.object,
+                is_active=True,
+                studio__is_active=True,
+                start_at__date__gte=window_dates[0],
+                start_at__date__lte=window_dates[-1],
+            )
+            .dates("start_at", "day")
+        )
+        selected_date = parse_booking_date(self.request.GET.get("date"), window_dates)
+        if selected_date is None:
+            selected_date = min(active_dates) if active_dates else window_dates[0]
+        context["showtime_days"] = [
+            {
+                "date": date,
+                "value": date.isoformat(),
+                "is_selected": date == selected_date,
+                "has_showtimes": date in active_dates,
+            }
+            for date in window_dates
+        ]
+        context["selected_showtime_date"] = selected_date
+        context["booking_window_days"] = BOOKING_WINDOW_DAYS
         context["showtimes"] = ShowTime.objects.filter(
             movie=self.object,
             is_active=True,
             studio__is_active=True,
+            start_at__date=selected_date,
         ).select_related("studio", "studio__studio_type")
         return context
 

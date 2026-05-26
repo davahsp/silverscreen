@@ -113,6 +113,8 @@ Manager pages support:
 
 Inactive movies are hidden from customer movie selection. Inactive products are hidden from booking and POS add-ons.
 
+Customer movie browsing is limited to movies with active showtimes in the booking window. The booking window is a shared 14-day constant starting from the current local date.
+
 ## Architecture
 
 ### Apps
@@ -234,6 +236,7 @@ The UI follows `silverscreen-claude-design/`:
 - Topbar with role switcher
 - Role-aware horizontal navigation
 - Customer movie cards use full-card navigation with hover/focus ticket call-to-action footers
+- Movie detail showtimes are paginated by date across the shared 14-day booking window
 - Mobile bottom navigation behavior
 - Cards, tables, forms, status badges, seat grid, POS layout, ticket preview, and gateway page styling
 
@@ -308,6 +311,8 @@ Current test coverage includes:
 - Studio capacity derivation
 - Zero-seat studio validation
 - Inactive movie/product filtering
+- Customer movie filtering by active showtimes in the 14-day booking window
+- Movie detail day-based showtime pagination
 - Multi-phase booking add-ons visibility
 
 ## Current Limitations
