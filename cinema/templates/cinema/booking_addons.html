@@ -6,7 +6,7 @@
   <div><h1 class="page-title">Add-ons</h1><p class="page-subtitle">Pilih produk tambahan, atau lanjutkan tanpa add-ons.</p></div>
 </div>
 {% include "cinema/partials/booking_stepper.html" %}
-<form method="post">
+<form method="post" data-addon-form>
   {% csrf_token %}
   <div class="grid-2">
     <div class="card">
@@ -16,7 +16,16 @@
           <div class="addon-card">
             <strong>{{ product.name }}</strong>
             <div class="text-muted">{{ product.get_category_display }} · {{ product.price|rupiah }}</div>
-            <input class="form-control mt-4" type="number" min="0" value="{{ addon_quantities|dict_get:product.id|default:0 }}" name="product_{{ product.id }}">
+            <input
+              class="form-control mt-4"
+              type="number"
+              min="0"
+              value="{{ addon_quantities|dict_get:product.id|default:0 }}"
+              name="product_{{ product.id }}"
+              data-addon-input
+              data-addon-name="{{ product.name }}"
+              data-addon-price="{{ product.price }}"
+            >
           </div>
         {% empty %}
           <p>Tidak ada produk aktif.</p>
@@ -26,11 +35,65 @@
     <div class="card">
       <div class="card-header">Ringkasan</div>
       <div class="card-body">
-        <div class="order-summary-row"><span>Jumlah tiket</span><strong>{{ draft.quantity }}</strong></div>
+        <div class="summary-table">
+          <div class="summary-table-head">
+            <span>Item</span>
+            <span>Qty</span>
+            <span>Harga</span>
+            <span>Subtotal</span>
+          </div>
+          <div class="summary-table-row">
+            <span>Tiket</span>
+            <span>{{ ticket_quantity }}</span>
+            <span>{{ showtime.price|rupiah }}</span>
+            <strong>{{ ticket_subtotal|rupiah }}</strong>
+          </div>
+          <div data-addon-summary></div>
+          <div class="summary-table-row">
+            <span>Biaya layanan</span>
+            <span>1</span>
+            <span>{{ service_charge_price|rupiah }}</span>
+            <strong>{{ service_charge_price|rupiah }}</strong>
+          </div>
+        </div>
+        <div class="order-summary-total"><span>Grand total</span><span data-grand-total>Rp0</span></div>
         <button class="button button-primary button-full">Lanjut Review</button>
-        <a class="button button-secondary button-full mt-4" href="{% url 'cinema:booking_seats' showtime.id %}">Kembali</a>
+        <a class="button button-secondary button-full mt-4" href="{% url 'cinema:booking' showtime.id %}">Kembali</a>
       </div>
     </div>
   </div>
 </form>
+<script>
+  (() => {
+    const form = document.querySelector("[data-addon-form]");
+    const addonSummary = document.querySelector("[data-addon-summary]");
+    const grandTotal = document.querySelector("[data-grand-total]");
+    const ticketTotal = {{ ticket_subtotal }};
+    const serviceCharge = {{ service_charge_price }};
+    const formatRupiah = (value) => `Rp${Number(value || 0).toLocaleString("id-ID")}`;
+    if (!form || !addonSummary || !grandTotal) return;
+    const render = () => {
+      let addonTotal = 0;
+      addonSummary.replaceChildren();
+      form.querySelectorAll("[data-addon-input]").forEach((input) => {
+        const quantity = Math.max(0, parseInt(input.value || "0", 10) || 0);
+        if (!quantity) return;
+        const price = parseInt(input.dataset.addonPrice || "0", 10) || 0;
+        const subtotal = quantity * price;
+        addonTotal += subtotal;
+        const row = document.createElement("div");
+        row.className = "summary-table-row";
+        [input.dataset.addonName, quantity, formatRupiah(price), formatRupiah(subtotal)].forEach((value, index) => {
+          const cell = document.createElement(index === 3 ? "strong" : "span");
+          cell.textContent = value;
+          row.append(cell);
+        });
+        addonSummary.append(row);
+      });
+      grandTotal.textContent = formatRupiah(ticketTotal + addonTotal + serviceCharge);
+    };
+    form.addEventListener("input", render);
+    render();
+  })();
+</script>
 {% endblock %}

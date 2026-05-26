@@ -21,13 +21,12 @@ MVP authentication is simplified with a session-based role switcher. Full user a
 
 ### Online Customer Booking
 
-The online booking flow is multi-phase and follows the design reference stepper:
+The online booking flow is multi-phase and follows the design reference stepper. Ticket count is inferred from the number of selected seats:
 
-1. `Jumlah Tiket`
-2. `Pilih Kursi`
-3. `Add-ons`
-4. `Review`
-5. `Pembayaran`
+1. `Pilih Kursi`
+2. `Add-ons`
+3. `Review`
+4. `Pembayaran`
 
 The booking draft is stored in the session until the customer confirms the review step.
 
@@ -193,7 +192,6 @@ Customer:
 - `/`
 - `/movies/<id>/`
 - `/booking/<showtime_id>/`
-- `/booking/<showtime_id>/seats/`
 - `/booking/<showtime_id>/addons/`
 - `/booking/<showtime_id>/review/`
 - `/booking/orders/<order_number>/payment/`
@@ -240,6 +238,7 @@ The UI follows `silverscreen-claude-design/`:
 - Movie detail jam tayang is paginated by date across the shared 14-day booking window; the date filter stays statically rendered and HTMX uses `hx-include` to refresh only the list area
 - Mobile bottom navigation behavior
 - Cards, tables, forms, status badges, seat grid, POS layout, ticket preview, and gateway page styling
+- Booking summary cards update ticket/add-on quantities, unit prices, subtotals, and grand totals before review
 
 CSS files:
 
@@ -320,7 +319,8 @@ Current test coverage includes:
 - Customer movie filtering by active showtimes in the 14-day booking window
 - Movie detail day-based showtime pagination
 - HTMX movie detail jam tayang list replacement
-- Multi-phase booking add-ons visibility
+- Multi-phase booking with ticket count inferred from selected seats
+- Booking add-ons visibility
 
 ## Current Limitations
 

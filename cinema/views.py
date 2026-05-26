@@ -26,7 +26,14 @@ from .models import (
     Studio,
     TicketStatus,
 )
-from .services.booking import calculate_total, create_online_order, create_onsite_order, parse_addons, unavailable_seat_ids
+from .services.booking import (
+    SERVICE_CHARGE_PRICE,
+    calculate_total,
+    create_online_order,
+    create_onsite_order,
+    parse_addons,
+    unavailable_seat_ids,
+)
 from .services.cancellation import cancel_order, print_order_tickets
 from .services.payments import apply_payment_callback
 from .services.scheduling import disable_showtime
@@ -184,7 +191,8 @@ class MovieDetailView(RoleMixin, DetailView):
         return context
 
 
-BOOKING_STEPS = ["Jumlah Tiket", "Pilih Kursi", "Add-ons", "Review", "Pembayaran"]
+BOOKING_STEPS = ["Pilih Kursi", "Add-ons", "Review", "Pembayaran"]
+MAX_ONLINE_TICKETS = 10
 
 
 class BookingDraftMixin(RoleMixin):
@@ -216,39 +224,15 @@ class BookingDraftMixin(RoleMixin):
                 "booking_steps": BOOKING_STEPS,
                 "current_step": getattr(self, "current_step", 0),
                 "draft": self.get_draft(),
+                "service_charge_price": SERVICE_CHARGE_PRICE,
             }
         )
         return context
 
 
-class BookingQuantityView(BookingDraftMixin, TemplateView):
-    template_name = "cinema/booking_quantity.html"
-    current_step = 0
-
-    def post(self, request, *args, **kwargs):
-        try:
-            quantity = int(request.POST.get("quantity", "0"))
-        except ValueError:
-            quantity = 0
-        if quantity < 1 or quantity > 10:
-            messages.error(request, "Jumlah tiket harus 1 sampai 10.")
-            return self.get(request, *args, **kwargs)
-        draft = self.get_draft()
-        if draft.get("quantity") != quantity:
-            draft["seat_ids"] = []
-        draft["quantity"] = quantity
-        self.save_draft(draft)
-        return redirect("cinema:booking_seats", showtime_id=self.kwargs["showtime_id"])
-
-
 class BookingSeatsView(BookingDraftMixin, TemplateView):
     template_name = "cinema/booking_seats.html"
-    current_step = 1
-
-    def dispatch(self, request, *args, **kwargs):
-        if not self.get_draft().get("quantity"):
-            return redirect("cinema:booking", showtime_id=kwargs["showtime_id"])
-        return super().dispatch(request, *args, **kwargs)
+    current_step = 0
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -265,31 +249,34 @@ class BookingSeatsView(BookingDraftMixin, TemplateView):
 
     def post(self, request, *args, **kwargs):
         draft = self.get_draft()
-        quantity = int(draft.get("quantity") or 0)
         try:
             seat_ids = [int(value) for value in request.POST.getlist("seats")]
         except ValueError:
             seat_ids = []
-        if len(seat_ids) != quantity:
-            messages.error(request, f"Pilih tepat {quantity} kursi.")
+        if len(seat_ids) < 1 or len(seat_ids) > MAX_ONLINE_TICKETS:
+            messages.error(request, f"Pilih 1 sampai {MAX_ONLINE_TICKETS} kursi.")
             return self.get(request, *args, **kwargs)
         draft["seat_ids"] = seat_ids
+        draft["quantity"] = len(seat_ids)
         self.save_draft(draft)
         return redirect("cinema:booking_addons", showtime_id=self.kwargs["showtime_id"])
 
 
 class BookingAddonsView(BookingDraftMixin, TemplateView):
     template_name = "cinema/booking_addons.html"
-    current_step = 2
+    current_step = 1
 
     def dispatch(self, request, *args, **kwargs):
         if not self.get_draft().get("seat_ids"):
-            return redirect("cinema:booking_seats", showtime_id=kwargs["showtime_id"])
+            return redirect("cinema:booking", showtime_id=kwargs["showtime_id"])
         return super().dispatch(request, *args, **kwargs)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        ticket_quantity = len(context["draft"].get("seat_ids", []))
         context["products"] = Product.objects.filter(is_active=True)
+        context["ticket_quantity"] = ticket_quantity
+        context["ticket_subtotal"] = context["showtime"].price * ticket_quantity
         context["addon_quantities"] = {
             str(product_id): quantity for product_id, quantity in context["draft"].get("addons", [])
         }
@@ -304,12 +291,12 @@ class BookingAddonsView(BookingDraftMixin, TemplateView):
 
 class BookingReviewView(BookingDraftMixin, TemplateView):
     template_name = "cinema/booking_review.html"
-    current_step = 3
+    current_step = 2
 
     def dispatch(self, request, *args, **kwargs):
         draft = self.get_draft()
         if not draft.get("seat_ids"):
-            return redirect("cinema:booking_seats", showtime_id=kwargs["showtime_id"])
+            return redirect("cinema:booking", showtime_id=kwargs["showtime_id"])
         return super().dispatch(request, *args, **kwargs)
 
     def get_context_data(self, **kwargs):
@@ -362,7 +349,7 @@ class BookingPaymentView(RoleMixin, DetailView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["booking_steps"] = BOOKING_STEPS
-        context["current_step"] = 4
+        context["current_step"] = 3
         return context
 
 

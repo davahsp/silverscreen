@@ -203,12 +203,9 @@ class SilverScreenServiceTests(TestCase):
         self.assertContains(response, self.movie.title)
         self.assertNotContains(response, self.inactive_movie.title)
 
-        response = self.client.post(reverse("cinema:booking", args=[self.showtime.id]), {"quantity": 1})
-        self.assertRedirects(response, reverse("cinema:booking_seats", args=[self.showtime.id]))
-        response = self.client.post(reverse("cinema:booking_seats", args=[self.showtime.id]), {"seats": [self.seats[0].id]})
+        response = self.client.post(reverse("cinema:booking", args=[self.showtime.id]), {"seats": [self.seats[0].id]})
         self.assertRedirects(response, reverse("cinema:booking_addons", args=[self.showtime.id]))
         response = self.client.get(reverse("cinema:booking_addons", args=[self.showtime.id]))
-        self.assertContains(response, "Jumlah Tiket")
         self.assertContains(response, "Pilih Kursi")
         self.assertContains(response, "Add-ons")
         self.assertContains(response, "Review")
@@ -291,29 +288,29 @@ class SilverScreenServiceTests(TestCase):
         self.assertNotContains(response, "Sinopsis")
 
     def test_full_page_messages_are_serialized_for_toasts(self):
-        response = self.client.post(reverse("cinema:booking", args=[self.showtime.id]), {"quantity": 0})
+        response = self.client.post(reverse("cinema:booking", args=[self.showtime.id]), {"seats": []})
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "django-messages-data")
-        self.assertContains(response, "Jumlah tiket harus 1 sampai 10.")
+        self.assertContains(response, "Pilih 1 sampai 10 kursi.")
 
     def test_htmx_messages_are_sent_in_trigger_header(self):
         response = self.client.post(
             reverse("cinema:booking", args=[self.showtime.id]),
-            {"quantity": 0},
+            {"seats": []},
             headers={"HX-Request": "true"},
         )
 
         self.assertEqual(response.status_code, 200)
         trigger = json.loads(response.headers["HX-Trigger"])
-        self.assertEqual(trigger["ss:messages"]["messages"][0]["message"], "Jumlah tiket harus 1 sampai 10.")
+        self.assertEqual(trigger["ss:messages"]["messages"][0]["message"], "Pilih 1 sampai 10 kursi.")
         self.assertIn("error", trigger["ss:messages"]["messages"][0]["tags"])
 
     def test_htmx_messages_are_consumed_after_trigger_header(self):
-        message_text = "Jumlah tiket harus 1 sampai 10."
+        message_text = "Pilih 1 sampai 10 kursi."
         self.client.post(
             reverse("cinema:booking", args=[self.showtime.id]),
-            {"quantity": 0},
+            {"seats": []},
             headers={"HX-Request": "true"},
         )
 
