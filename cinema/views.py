@@ -22,7 +22,7 @@ from .models import (
     Studio,
     TicketStatus,
 )
-from .services.booking import create_online_order, create_onsite_order, parse_addons, unavailable_seat_ids
+from .services.booking import calculate_total, create_online_order, create_onsite_order, parse_addons, unavailable_seat_ids
 from .services.cancellation import cancel_order, print_order_tickets
 from .services.payments import apply_payment_callback
 from .services.scheduling import disable_showtime
@@ -111,9 +111,11 @@ class MovieDetailView(RoleMixin, DetailView):
         return context
 
 
-class BookingCreateView(RoleMixin, TemplateView):
+BOOKING_STEPS = ["Jumlah Tiket", "Pilih Kursi", "Add-ons", "Review", "Pembayaran"]
+
+
+class BookingDraftMixin(RoleMixin):
     required_role = "customer"
-    template_name = "cinema/booking.html"
 
     def get_showtime(self):
         return get_object_or_404(
@@ -122,32 +124,173 @@ class BookingCreateView(RoleMixin, TemplateView):
             is_active=True,
         )
 
+    def draft_key(self):
+        return f"booking_{self.kwargs['showtime_id']}"
+
+    def get_draft(self):
+        return self.request.session.get(self.draft_key(), {})
+
+    def save_draft(self, draft):
+        self.request.session[self.draft_key()] = draft
+        self.request.session.modified = True
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         showtime = self.get_showtime()
-        unavailable = unavailable_seat_ids(showtime)
         context.update(
             {
                 "showtime": showtime,
+                "booking_steps": BOOKING_STEPS,
+                "current_step": getattr(self, "current_step", 0),
+                "draft": self.get_draft(),
+            }
+        )
+        return context
+
+
+class BookingQuantityView(BookingDraftMixin, TemplateView):
+    template_name = "cinema/booking_quantity.html"
+    current_step = 0
+
+    def post(self, request, *args, **kwargs):
+        try:
+            quantity = int(request.POST.get("quantity", "0"))
+        except ValueError:
+            quantity = 0
+        if quantity < 1 or quantity > 10:
+            messages.error(request, "Jumlah tiket harus 1 sampai 10.")
+            return self.get(request, *args, **kwargs)
+        draft = self.get_draft()
+        if draft.get("quantity") != quantity:
+            draft["seat_ids"] = []
+        draft["quantity"] = quantity
+        self.save_draft(draft)
+        return redirect("cinema:booking_seats", showtime_id=self.kwargs["showtime_id"])
+
+
+class BookingSeatsView(BookingDraftMixin, TemplateView):
+    template_name = "cinema/booking_seats.html"
+    current_step = 1
+
+    def dispatch(self, request, *args, **kwargs):
+        if not self.get_draft().get("quantity"):
+            return redirect("cinema:booking", showtime_id=kwargs["showtime_id"])
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        showtime = context["showtime"]
+        unavailable = unavailable_seat_ids(showtime)
+        context.update(
+            {
                 "seats": Seat.objects.filter(studio=showtime.studio).order_by("grid_y_pos", "grid_x_pos"),
-                "products": Product.objects.filter(is_active=True),
                 "occupancy": {seat_id: TicketStatus.HELD for seat_id in unavailable},
-                "row_range": range(showtime.studio.grid_rows),
-                "col_range": range(showtime.studio.grid_cols),
+                "selected_seat_ids": [int(value) for value in context["draft"].get("seat_ids", [])],
+            }
+        )
+        return context
+
+    def post(self, request, *args, **kwargs):
+        draft = self.get_draft()
+        quantity = int(draft.get("quantity") or 0)
+        try:
+            seat_ids = [int(value) for value in request.POST.getlist("seats")]
+        except ValueError:
+            seat_ids = []
+        if len(seat_ids) != quantity:
+            messages.error(request, f"Pilih tepat {quantity} kursi.")
+            return self.get(request, *args, **kwargs)
+        draft["seat_ids"] = seat_ids
+        self.save_draft(draft)
+        return redirect("cinema:booking_addons", showtime_id=self.kwargs["showtime_id"])
+
+
+class BookingAddonsView(BookingDraftMixin, TemplateView):
+    template_name = "cinema/booking_addons.html"
+    current_step = 2
+
+    def dispatch(self, request, *args, **kwargs):
+        if not self.get_draft().get("seat_ids"):
+            return redirect("cinema:booking_seats", showtime_id=kwargs["showtime_id"])
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["products"] = Product.objects.filter(is_active=True)
+        context["addon_quantities"] = {
+            str(product_id): quantity for product_id, quantity in context["draft"].get("addons", [])
+        }
+        return context
+
+    def post(self, request, *args, **kwargs):
+        draft = self.get_draft()
+        draft["addons"] = parse_addons(request.POST)
+        self.save_draft(draft)
+        return redirect("cinema:booking_review", showtime_id=self.kwargs["showtime_id"])
+
+
+class BookingReviewView(BookingDraftMixin, TemplateView):
+    template_name = "cinema/booking_review.html"
+    current_step = 3
+
+    def dispatch(self, request, *args, **kwargs):
+        draft = self.get_draft()
+        if not draft.get("seat_ids"):
+            return redirect("cinema:booking_seats", showtime_id=kwargs["showtime_id"])
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        showtime = context["showtime"]
+        draft = context["draft"]
+        seat_ids = draft.get("seat_ids", [])
+        addons = draft.get("addons", [])
+        products = Product.objects.in_bulk([product_id for product_id, _quantity in addons])
+        addon_lines = []
+        for product_id, quantity in addons:
+            product = products.get(product_id)
+            if product and product.is_active:
+                addon_lines.append({"product": product, "quantity": quantity, "total": product.price * quantity})
+        seats = Seat.objects.filter(id__in=seat_ids).order_by("grid_y_pos", "grid_x_pos")
+        context.update(
+            {
+                "selected_seats": seats,
+                "addon_lines": addon_lines,
+                "ticket_subtotal": showtime.price * len(seat_ids),
+                "total": calculate_total(showtime, seats, addons),
             }
         )
         return context
 
     def post(self, request, *args, **kwargs):
         showtime = self.get_showtime()
-        seat_ids = [int(value) for value in request.POST.getlist("seats")]
+        draft = self.get_draft()
         try:
-            order = create_online_order(showtime.id, seat_ids, parse_addons(request.POST))
+            order = create_online_order(showtime.id, draft.get("seat_ids", []), draft.get("addons", []))
         except (ValidationError, ValueError) as exc:
             messages.error(request, "; ".join(exc.messages) if hasattr(exc, "messages") else str(exc))
             return self.get(request, *args, **kwargs)
         messages.success(request, "Pesanan online dibuat. Lanjutkan pembayaran melalui stub gateway.")
-        return redirect("cinema:order_detail", number=order.number)
+        self.request.session.pop(self.draft_key(), None)
+        return redirect("cinema:booking_payment", number=order.number)
+
+
+class BookingPaymentView(RoleMixin, DetailView):
+    required_role = "customer"
+    model = Order
+    slug_field = "number"
+    slug_url_kwarg = "number"
+    template_name = "cinema/booking_payment.html"
+    context_object_name = "order"
+
+    def get_queryset(self):
+        return Order.objects.select_related("payment").prefetch_related("tickets__showtime__movie", "tickets__seat")
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["booking_steps"] = BOOKING_STEPS
+        context["current_step"] = 4
+        return context
 
 
 class OrderListView(RoleMixin, ListView):

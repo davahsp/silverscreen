@@ -1,0 +1,33 @@
+{% extends "cinema/base.html" %}
+{% load cinema_tags %}
+{% block title %}Review Pesanan{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1 class="page-title">Review Pesanan</h1><p class="page-subtitle">Periksa pesanan sebelum membuat pembayaran.</p></div>
+</div>
+{% include "cinema/partials/booking_stepper.html" %}
+<div class="grid-2">
+  <div class="card">
+    <div class="card-header">Detail</div>
+    <div class="card-body">
+      <div class="order-summary-row"><span>Film</span><strong>{{ showtime.movie.title }}</strong></div>
+      <div class="order-summary-row"><span>Showtime</span><strong>{{ showtime.start_at|date:"d M Y H:i" }}</strong></div>
+      <div class="order-summary-row"><span>Kursi</span><strong>{% for seat in selected_seats %}{{ seat.number }}{% if not forloop.last %}, {% endif %}{% endfor %}</strong></div>
+      <div class="order-summary-row"><span>Subtotal tiket</span><strong>{{ ticket_subtotal|rupiah }}</strong></div>
+      {% for line in addon_lines %}
+        <div class="order-summary-row"><span>{{ line.product.name }} x{{ line.quantity }}</span><strong>{{ line.total|rupiah }}</strong></div>
+      {% endfor %}
+      <div class="order-summary-row"><span>Biaya layanan</span><strong>Rp5.000</strong></div>
+      <div class="order-summary-total"><span>Total</span><span>{{ total|rupiah }}</span></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header">Konfirmasi</div>
+    <div class="card-body">
+      <p class="text-muted">Setelah pesanan dibuat, tiket berstatus HELD dan pembayaran diterbitkan melalui stub payment gateway.</p>
+      <form method="post">{% csrf_token %}<button class="button button-primary button-full">Buat Pesanan</button></form>
+      <a class="button button-secondary button-full mt-4" href="{% url 'cinema:booking_addons' showtime.id %}">Kembali</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

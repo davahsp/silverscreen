@@ -88,6 +88,16 @@ td { padding:12px 14px; border-bottom:1px solid var(--border-lt); vertical-align
 .addon-card { border:1.5px solid var(--border-lt); border-radius:var(--r-md); padding:12px; background:#fff; }
 .order-summary-row, .order-summary-total { display:flex; justify-content:space-between; gap:12px; padding:7px 0; border-bottom:1px solid var(--border-lt); }
 .order-summary-total { border-top:2px solid var(--text-1); border-bottom:0; margin-top:8px; font-weight:900; font-size:16px; color:var(--red); }
+.stepper { display:flex; align-items:center; margin-bottom:24px; overflow-x:auto; padding-bottom:4px; }
+.stepper-step { display:flex; align-items:center; gap:8px; flex-shrink:0; }
+.stepper-circle { width:30px; height:30px; border-radius:50%; display:grid; place-items:center; font-weight:900; font-size:13px; border:2px solid var(--border); background:#fff; color:var(--text-3); }
+.stepper-label { font-size:12px; font-weight:800; white-space:nowrap; color:var(--text-3); }
+.stepper-line { height:2px; min-width:28px; max-width:64px; flex:1; background:var(--border); margin:0 8px; }
+.stepper-step.completed .stepper-circle { background:var(--red); border-color:var(--red); color:#fff; }
+.stepper-step.completed .stepper-label { color:var(--red); }
+.stepper-step.active .stepper-circle { border-color:var(--red); color:var(--red); box-shadow:0 0 0 3px rgba(159,29,46,.12); }
+.stepper-step.active .stepper-label { color:var(--text-1); }
+.stepper-line.completed { background:var(--red); }
 .pos-layout { display:grid; grid-template-columns:1fr 360px; gap:20px; }
 .ticket-card { max-width:560px; border-radius:18px; background:#fff; border:1px solid var(--border-lt); overflow:hidden; box-shadow:var(--sh-sm); }
 .ticket-card-header { background:#1a1410; color:#fff; padding:20px; }
@@ -107,4 +117,6 @@ td { padding:12px 14px; border-bottom:1px solid var(--border-lt); vertical-align
   .nav-tab.active { border-top-color:var(--red); }
   .grid-2,.grid-3,.grid-4,.pos-layout,.stats-grid { grid-template-columns:1fr; }
   .movie-grid { grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); }
+  .stepper-label { font-size:10px; }
+  .stepper-circle { width:24px; height:24px; font-size:11px; }
 }

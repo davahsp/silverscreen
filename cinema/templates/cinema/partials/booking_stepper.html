@@ -1,0 +1,11 @@
+<div class="stepper" aria-label="Tahap pemesanan tiket">
+  {% for step in booking_steps %}
+    <div class="stepper-step {% if forloop.counter0 < current_step %}completed{% elif forloop.counter0 == current_step %}active{% else %}inactive{% endif %}">
+      <div class="stepper-circle">{% if forloop.counter0 < current_step %}✓{% else %}{{ forloop.counter }}{% endif %}</div>
+      <span class="stepper-label">{{ step }}</span>
+    </div>
+    {% if not forloop.last %}
+      <div class="stepper-line {% if forloop.counter0 < current_step %}completed{% endif %}"></div>
+    {% endif %}
+  {% endfor %}
+</div>

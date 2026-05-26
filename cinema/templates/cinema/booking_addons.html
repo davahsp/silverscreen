@@ -1,0 +1,36 @@
+{% extends "cinema/base.html" %}
+{% load cinema_tags %}
+{% block title %}Add-ons{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1 class="page-title">Add-ons</h1><p class="page-subtitle">Pilih produk tambahan, atau lanjutkan tanpa add-ons.</p></div>
+</div>
+{% include "cinema/partials/booking_stepper.html" %}
+<form method="post">
+  {% csrf_token %}
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-header">Produk Aktif</div>
+      <div class="card-body addon-grid">
+        {% for product in products %}
+          <div class="addon-card">
+            <strong>{{ product.name }}</strong>
+            <div class="text-muted">{{ product.get_category_display }} · {{ product.price|rupiah }}</div>
+            <input class="form-control mt-4" type="number" min="0" value="{{ addon_quantities|dict_get:product.id|default:0 }}" name="product_{{ product.id }}">
+          </div>
+        {% empty %}
+          <p>Tidak ada produk aktif.</p>
+        {% endfor %}
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header">Ringkasan</div>
+      <div class="card-body">
+        <div class="order-summary-row"><span>Jumlah tiket</span><strong>{{ draft.quantity }}</strong></div>
+        <button class="button button-primary button-full">Lanjut Review</button>
+        <a class="button button-secondary button-full mt-4" href="{% url 'cinema:booking_seats' showtime.id %}">Kembali</a>
+      </div>
+    </div>
+  </div>
+</form>
+{% endblock %}

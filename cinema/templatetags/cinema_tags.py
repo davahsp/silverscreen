@@ -20,3 +20,10 @@ def status_class(value):
 @register.filter
 def seat_status(occupancy, seat_id):
     return occupancy.get(seat_id)
+
+
+@register.filter
+def dict_get(mapping, key):
+    if not mapping:
+        return None
+    return mapping.get(str(key), mapping.get(key))

@@ -1,0 +1,40 @@
+{% extends "cinema/base.html" %}
+{% load cinema_tags %}
+{% block title %}Pilih Kursi{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1 class="page-title">Pilih Kursi</h1><p class="page-subtitle">Pilih tepat {{ draft.quantity }} kursi untuk {{ showtime.movie.title }}.</p></div>
+</div>
+{% include "cinema/partials/booking_stepper.html" %}
+<form method="post">
+  {% csrf_token %}
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-header">Layout Kursi</div>
+      <div class="card-body">
+        <div class="seat-screen">Layar</div>
+        <div class="seat-grid">
+          {% for seat in seats %}
+            {% with occupied=occupancy|seat_status:seat.id %}
+              <label class="seat-choice">
+                <input type="checkbox" name="seats" value="{{ seat.id }}" {% if seat.id in selected_seat_ids %}checked{% endif %} {% if occupied or not seat.is_active %}disabled{% endif %}>
+                <span class="seat {% if occupied %}unavailable{% elif not seat.is_active %}disabled{% endif %}">{{ seat.number }}</span>
+              </label>
+            {% endwith %}
+          {% endfor %}
+        </div>
+        <div class="seat-legend"><span>Tersedia</span><span>Dipilih</span><span>Ditahan/Terjual</span><span>Nonaktif</span></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header">Ringkasan</div>
+      <div class="card-body">
+        <div class="order-summary-row"><span>Jumlah tiket</span><strong>{{ draft.quantity }}</strong></div>
+        <div class="order-summary-row"><span>Harga / tiket</span><strong>{{ showtime.price|rupiah }}</strong></div>
+        <button class="button button-primary button-full">Lanjut Add-ons</button>
+        <a class="button button-secondary button-full mt-4" href="{% url 'cinema:booking' showtime.id %}">Kembali</a>
+      </div>
+    </div>
+  </div>
+</form>
+{% endblock %}

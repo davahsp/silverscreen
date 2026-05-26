@@ -1,0 +1,32 @@
+{% extends "cinema/base.html" %}
+{% load cinema_tags %}
+{% block title %}Pembayaran{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1 class="page-title">Pembayaran</h1><p class="page-subtitle">Pesanan {{ order.number }} sudah dibuat. Status berubah hanya melalui callback gateway.</p></div>
+</div>
+{% include "cinema/partials/booking_stepper.html" %}
+<div class="grid-2">
+  <div class="card">
+    <div class="card-header">Status Pembayaran</div>
+    <div class="card-body">
+      {% include "cinema/partials/status_badge.html" with status=order.payment.status %}
+      <div class="order-summary-row"><span>Internal Payment</span><strong class="font-mono">{{ order.payment.internal_payment_id }}</strong></div>
+      <div class="order-summary-row"><span>Gateway Payment</span><strong class="font-mono">{{ order.payment.gateway_payment_id }}</strong></div>
+      <div class="order-summary-total"><span>Total</span><span>{{ order.payment.amount|rupiah }}</span></div>
+      {% if order.payment.status == "UNPAID" %}
+        <a class="button button-gold button-full mt-4" href="{{ order.payment.payment_url }}">Buka Halaman Gateway</a>
+      {% endif %}
+      <a class="button button-secondary button-full mt-4" href="{% url 'cinema:order_detail' order.number %}">Lihat Detail Pesanan</a>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header">Tiket Ditahan</div>
+    <div class="card-body">
+      {% for ticket in order.tickets.all %}
+        <div class="order-summary-row"><span>{{ ticket.seat.number }}</span>{% include "cinema/partials/status_badge.html" with status=ticket.status %}</div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}
