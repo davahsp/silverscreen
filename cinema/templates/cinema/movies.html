@@ -10,7 +10,7 @@
 </div>
 <div class="movie-grid">
   {% for movie in movies %}
-    <article class="movie-card">
+    <a class="movie-card" href="{% url 'cinema:movie_detail' movie.pk %}" aria-label="Beli tiket untuk {{ movie.title }}">
       <div class="movie-poster">
         <div>
           <div class="movie-poster-genre">{{ movie.movie_theme.name }}</div>
@@ -19,13 +19,13 @@
       </div>
       <div class="movie-card-body">
         <strong>{{ movie.title }}</strong>
-        <div class="text-muted">{{ movie.get_age_rating_display }} · {{ movie.runtime_minutes }} menit</div>
+        <div class="text-muted">{{ movie.get_age_rating_display }} &middot; {{ movie.runtime_minutes }} menit</div>
         <p>{{ movie.synopsis|truncatewords:22 }}</p>
       </div>
-      <div class="card-footer">
-        <a class="button button-primary button-full" href="{% url 'cinema:movie_detail' movie.pk %}">Pilih Showtime</a>
+      <div class="movie-card-footer">
+        <span>Beli Tiket</span>
       </div>
-    </article>
+    </a>
   {% empty %}
     <div class="card"><div class="card-body">Belum ada film aktif.</div></div>
   {% endfor %}

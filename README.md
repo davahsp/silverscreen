@@ -233,6 +233,7 @@ The UI follows `silverscreen-claude-design/`:
 - No external UI component library
 - Topbar with role switcher
 - Role-aware horizontal navigation
+- Customer movie cards use full-card navigation with hover/focus ticket call-to-action footers
 - Mobile bottom navigation behavior
 - Cards, tables, forms, status badges, seat grid, POS layout, ticket preview, and gateway page styling
 
