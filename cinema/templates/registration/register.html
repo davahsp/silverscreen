@@ -1,0 +1,24 @@
+{% extends "cinema/auth_base.html" %}
+{% block title %}Daftar - Silver Screen{% endblock %}
+{% block auth_content %}
+<div class="auth-card">
+  <h1 class="auth-title">Daftar Pelanggan</h1>
+  <p class="auth-subtitle">Buat akun pelanggan baru untuk memesan tiket.</p>
+  <form method="post" class="auth-form">
+    {% csrf_token %}
+    {% if form.non_field_errors %}
+      <div class="auth-error">{{ form.non_field_errors }}</div>
+    {% endif %}
+    {% for field in form %}
+      <div class="form-group">
+        <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+        {{ field }}
+        {% if field.help_text %}<div class="auth-help">{{ field.help_text|safe }}</div>{% endif %}
+        {% if field.errors %}<div class="auth-error">{{ field.errors }}</div>{% endif %}
+      </div>
+    {% endfor %}
+    <button class="button button-primary button-full" type="submit">Daftar</button>
+  </form>
+  <p class="auth-alt">Sudah punya akun? <a href="{% url 'cinema:login' %}">Masuk</a></p>
+</div>
+{% endblock %}

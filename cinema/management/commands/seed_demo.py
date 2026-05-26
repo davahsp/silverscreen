@@ -1,5 +1,6 @@
 from datetime import timedelta
 
+from django.contrib.auth.models import Group, User
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 
@@ -8,10 +9,30 @@ from cinema.services.scheduling import save_showtime
 from cinema.services.studios import save_studio_layout
 
 
+DEMO_USERS = [
+    ("customer", "customer123", "customer"),
+    ("staff", "staff123", "staff"),
+    ("scheduler", "scheduler123", "scheduler"),
+    ("manager", "manager123", "manager"),
+]
+
+
 class Command(BaseCommand):
     help = "Seed demo data for Silver Screen MVP."
 
     def handle(self, *args, **options):
+        groups = {
+            name: Group.objects.get_or_create(name=name)[0]
+            for name in ["customer", "staff", "scheduler", "manager"]
+        }
+        for username, password, role in DEMO_USERS:
+            user, created = User.objects.get_or_create(username=username, defaults={"email": f"{username}@silverscreen.local"})
+            if created:
+                user.set_password(password)
+                user.save()
+            user.groups.add(groups[role])
+
+
         themes = {
             name: MovieTheme.objects.get_or_create(name=name)[0]
             for name in ["Drama", "Sci-Fi", "Horror", "Family", "Documentary"]

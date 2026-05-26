@@ -15,7 +15,7 @@ Silver Screen supports four operating roles:
 - Scheduler: create and disable showtimes.
 - Manajer Bioskop: manage movies, products, studios, and studio seat layouts.
 
-MVP authentication is simplified with a session-based role switcher. Full user accounts and permissions are not implemented yet.
+Authentication uses Django's built-in `User` and `Group` models. Each user belongs to one role group (`customer`, `staff`, `scheduler`, or `manager`). Customers can self-register; staff, scheduler, and manager accounts are provisioned via the seed command or Django admin. Superusers are treated as managers.
 
 ## SDS Rules Implemented
 
@@ -217,9 +217,11 @@ Manager:
 - `/manager/products/`
 - `/manager/studios/`
 
-Role switcher:
+Authentication:
 
-- `/roles/`
+- `/login/`
+- `/logout/`
+- `/register/` (customer self-signup)
 
 ## UI Implementation
 
@@ -282,6 +284,15 @@ Open:
 http://127.0.0.1:8000/
 ```
 
+Demo accounts created by `seed_demo`:
+
+| Username   | Password       | Role      |
+|------------|----------------|-----------|
+| customer   | customer123    | customer  |
+| staff      | staff123       | staff     |
+| scheduler  | scheduler123   | scheduler |
+| manager    | manager123     | manager   |
+
 ## Verification
 
 Run Django system checks:
@@ -321,10 +332,16 @@ Current test coverage includes:
 - HTMX movie detail jam tayang list replacement
 - Multi-phase booking with ticket count inferred from selected seats
 - Booking add-ons visibility
+- Public movies/movie-detail browsing
+- Login required for booking
+- Role-aware login redirect (customer/staff/scheduler/manager)
+- Cross-role access is redirected to the user's home
+- Customer self-signup creates a user in the `customer` group and auto-logs in
+- Logout returns to the login page
 
 ## Current Limitations
 
-- Authentication is a demo session role switcher, not production auth.
+- Authentication uses Django auth + Groups; customer pages (movies list and detail) are public, booking and role pages require login.
 - Image fields are stored as text paths/URLs for MVP.
 - The studio layout builder is intentionally simple.
 - SQLite is used by default.

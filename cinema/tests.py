@@ -2,6 +2,7 @@ import json
 from datetime import timedelta
 
 from django.core.exceptions import ValidationError
+from django.contrib.auth.models import Group, User
 from django.contrib.messages.storage.base import Message
 from django.contrib.messages import constants as message_constants
 from django.test import TestCase
@@ -32,8 +33,17 @@ from cinema.services.scheduling import disable_showtime, save_showtime
 from cinema.services.studios import save_studio_layout
 
 
+def make_role_user(username, role):
+    user = User.objects.create_user(username=username, password=f"{username}-pass")
+    group, _ = Group.objects.get_or_create(name=role)
+    user.groups.add(group)
+    return user
+
+
 class SilverScreenServiceTests(TestCase):
     def setUp(self):
+        self.customer = make_role_user("customer1", "customer")
+        self.client.force_login(self.customer)
         theme = MovieTheme.objects.create(name="Drama")
         self.movie = Movie.objects.create(
             title="Ruang Sunyi",
@@ -344,3 +354,85 @@ class MessageSerializationTests(TestCase):
         self.assertEqual(serialized[0]["level"], message_constants.ERROR)
         self.assertIn("booking", serialized[0]["tags"])
         self.assertIn("error", serialized[0]["tags"])
+
+
+class AuthenticationTests(TestCase):
+    def setUp(self):
+        theme = MovieTheme.objects.create(name="Drama")
+        self.movie = Movie.objects.create(
+            title="Ruang Sunyi",
+            synopsis="Drama musik.",
+            age_rating=AgeRating.R13,
+            runtime_minutes=112,
+            movie_theme=theme,
+        )
+        self.studio_type = StudioType.objects.create(name="Regular", base_price=45000)
+        self.studio = Studio.objects.create(
+            name="Studio 1", studio_type=self.studio_type, grid_rows=1, grid_cols=1
+        )
+        from cinema.services.studios import save_studio_layout
+        from cinema.services.scheduling import save_showtime
+        save_studio_layout(self.studio, {(0, 0)})
+        self.showtime = save_showtime(
+            movie=self.movie,
+            studio=self.studio,
+            start_at=timezone.now() + timedelta(days=1),
+            price=45000,
+        )
+
+    def test_movies_list_is_public(self):
+        response = self.client.get(reverse("cinema:movies"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Masuk")
+        self.assertContains(response, "Daftar")
+
+    def test_movie_detail_is_public(self):
+        response = self.client.get(reverse("cinema:movie_detail", args=[self.movie.id]))
+        self.assertEqual(response.status_code, 200)
+
+    def test_booking_requires_login(self):
+        response = self.client.get(reverse("cinema:booking", args=[self.showtime.id]))
+        self.assertEqual(response.status_code, 302)
+        self.assertIn(reverse("cinema:login"), response.headers["Location"])
+
+    def test_login_redirects_customer_to_movies(self):
+        make_role_user("alice", "customer")
+        response = self.client.post(
+            reverse("cinema:login"),
+            {"username": "alice", "password": "alice-pass"},
+        )
+        self.assertRedirects(response, reverse("cinema:movies"))
+
+    def test_login_redirects_manager_to_dashboard(self):
+        make_role_user("bob", "manager")
+        response = self.client.post(
+            reverse("cinema:login"),
+            {"username": "bob", "password": "bob-pass"},
+        )
+        self.assertRedirects(response, reverse("cinema:manager_dashboard"))
+
+    def test_role_mismatch_is_blocked_and_redirected(self):
+        customer = make_role_user("c1", "customer")
+        self.client.force_login(customer)
+        response = self.client.get(reverse("cinema:manager_dashboard"))
+        self.assertRedirects(response, reverse("cinema:movies"))
+
+    def test_signup_creates_customer_user_and_logs_in(self):
+        response = self.client.post(
+            reverse("cinema:register"),
+            {
+                "username": "newuser",
+                "email": "new@example.com",
+                "password1": "Sup3rSecret!",
+                "password2": "Sup3rSecret!",
+            },
+        )
+        self.assertRedirects(response, reverse("cinema:movies"))
+        user = User.objects.get(username="newuser")
+        self.assertTrue(user.groups.filter(name="customer").exists())
+
+    def test_logout_redirects_to_login(self):
+        user = make_role_user("c2", "customer")
+        self.client.force_login(user)
+        response = self.client.post(reverse("cinema:logout"))
+        self.assertRedirects(response, reverse("cinema:login"))

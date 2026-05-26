@@ -1,0 +1,23 @@
+{% load static %}
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Silver Screen{% endblock %}</title>
+  <link rel="icon" type="image/svg+xml" href="{% static 'cinema/img/movie-ticket.svg' %}">
+  <link rel="stylesheet" href="{% static 'cinema/css/base.css' %}">
+</head>
+<body class="auth-body">
+  <main class="auth-shell">
+    <a class="auth-brand" href="{% url 'cinema:movies' %}">
+      <img class="topbar-logo-mark" src="{% static 'cinema/img/movie-ticket.svg' %}" alt="" aria-hidden="true">
+      <div>
+        <div class="topbar-logo-text">Silver Screen</div>
+        <div class="topbar-logo-sub">Cinema System</div>
+      </div>
+    </a>
+    {% block auth_content %}{% endblock %}
+  </main>
+</body>
+</html>

@@ -23,10 +23,20 @@
         </div>
       </a>
       <div class="topbar-spacer"></div>
-      <nav class="role-switcher">
-        {% for key,label in role_labels.items %}
-          <a class="role-btn {% if current_role == key %}active{% endif %}" href="{% url 'cinema:roles' %}?role={{ key }}">{{ label }}</a>
-        {% endfor %}
+      <nav class="user-menu">
+        {% if user.is_authenticated %}
+          <span class="user-menu-name">{{ user.get_username }}</span>
+          {% if current_role_label %}
+            <span class="user-menu-role">{{ current_role_label }}</span>
+          {% endif %}
+          <form method="post" action="{% url 'cinema:logout' %}" class="user-menu-form">
+            {% csrf_token %}
+            <button class="role-btn active" type="submit">Keluar</button>
+          </form>
+        {% else %}
+          <a class="role-btn" href="{% url 'cinema:login' %}">Masuk</a>
+          <a class="role-btn active" href="{% url 'cinema:register' %}">Daftar</a>
+        {% endif %}
       </nav>
     </header>
     <nav class="navbar">

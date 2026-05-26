@@ -6,7 +6,9 @@ app_name = "cinema"
 
 urlpatterns = [
     path("", views.MovieListView.as_view(), name="movies"),
-    path("roles/", views.RoleSwitchView.as_view(), name="roles"),
+    path("login/", views.SilverScreenLoginView.as_view(), name="login"),
+    path("logout/", views.SilverScreenLogoutView.as_view(), name="logout"),
+    path("register/", views.CustomerSignupView.as_view(), name="register"),
     path("movies/<int:pk>/", views.MovieDetailView.as_view(), name="movie_detail"),
     path("booking/<int:showtime_id>/", views.BookingSeatsView.as_view(), name="booking"),
     path("booking/<int:showtime_id>/addons/", views.BookingAddonsView.as_view(), name="booking_addons"),

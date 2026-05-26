@@ -2,10 +2,14 @@ import json
 from datetime import datetime, timedelta
 
 from django.contrib import messages
+from django.contrib.auth import login as auth_login
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib.auth.models import Group
+from django.contrib.auth.views import LoginView, LogoutView, redirect_to_login
 from django.core.exceptions import ValidationError
 from django.db.models import Exists, OuterRef
 from django.http import JsonResponse
-from django.shortcuts import get_object_or_404, redirect
+from django.shortcuts import get_object_or_404, redirect, resolve_url
 from django.urls import reverse_lazy
 from django.utils import timezone
 from django.views import View
@@ -14,7 +18,7 @@ from django.utils.decorators import method_decorator
 from django.views.generic import CreateView, DetailView, FormView, ListView, TemplateView, UpdateView
 
 from .constants import BOOKING_WINDOW_DAYS
-from .forms import MovieForm, ProductForm, RoleForm, ShowTimeForm, StudioForm
+from .forms import CustomerSignupForm, MovieForm, ProductForm, ShowTimeForm, StudioForm
 from .models import (
     Movie,
     Order,
@@ -47,6 +51,13 @@ ROLE_LABELS = {
     "manager": "Manajer",
 }
 
+ROLE_DEFAULT_URLS = {
+    "customer": "cinema:movies",
+    "staff": "cinema:counter_pos",
+    "scheduler": "cinema:scheduler_showtimes",
+    "manager": "cinema:manager_dashboard",
+}
+
 
 def booking_window_dates():
     today = timezone.localdate()
@@ -68,53 +79,108 @@ def parse_booking_date(value, allowed_dates):
     return selected_date if selected_date in allowed_dates else None
 
 
+def user_role(user):
+    if not user or not user.is_authenticated:
+        return None
+    cached = getattr(user, "_ss_role", None)
+    if cached is not None:
+        return cached
+    if user.is_superuser:
+        role = "manager"
+    else:
+        role = next(
+            (name for name in user.groups.values_list("name", flat=True) if name in ROLE_LABELS),
+            None,
+        )
+    user._ss_role = role
+    return role
+
+
 def selected_role(request):
-    return request.session.get("role", "customer")
+    return user_role(getattr(request, "user", None))
+
+
+def default_url_for_role(role):
+    return ROLE_DEFAULT_URLS.get(role, "cinema:movies")
+
+
+def _enforce_role(request, required_role):
+    if not request.user.is_authenticated:
+        return redirect_to_login(request.get_full_path())
+    role = user_role(request.user)
+    if required_role and role != required_role:
+        if role:
+            messages.error(request, "Anda tidak memiliki akses ke halaman tersebut.")
+            return redirect(default_url_for_role(role))
+        return redirect_to_login(request.get_full_path())
+    return None
 
 
 class RoleMixin:
     required_role = None
 
     def dispatch(self, request, *args, **kwargs):
-        if self.required_role and selected_role(request) != self.required_role:
-            request.session["role"] = self.required_role
+        if self.required_role:
+            denied = _enforce_role(request, self.required_role)
+            if denied is not None:
+                return denied
         return super().dispatch(request, *args, **kwargs)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["current_role"] = selected_role(self.request)
+        role = selected_role(self.request)
+        context["current_role"] = role
+        context["current_role_label"] = ROLE_LABELS.get(role)
         context["role_labels"] = ROLE_LABELS
         return context
 
 
-class RoleSwitchView(RoleMixin, FormView):
-    form_class = RoleForm
-    template_name = "cinema/roles.html"
+class RoleRequiredMixin:
+    """For non-template action views (POST endpoints) that need auth + role."""
 
-    def get(self, request, *args, **kwargs):
-        role = request.GET.get("role")
-        if role in ROLE_LABELS:
-            request.session["role"] = role
-            return redirect(default_url_for_role(role))
-        return super().get(request, *args, **kwargs)
+    required_role = None
+
+    def dispatch(self, request, *args, **kwargs):
+        denied = _enforce_role(request, self.required_role)
+        if denied is not None:
+            return denied
+        return super().dispatch(request, *args, **kwargs)
+
+
+class SilverScreenLoginView(LoginView):
+    template_name = "registration/login.html"
+    redirect_authenticated_user = True
+
+    def get_default_redirect_url(self):
+        role = user_role(self.request.user)
+        if role:
+            return resolve_url(default_url_for_role(role))
+        return resolve_url("cinema:movies")
+
+
+class SilverScreenLogoutView(LogoutView):
+    next_page = "cinema:login"
+
+
+class CustomerSignupView(FormView):
+    template_name = "registration/register.html"
+    form_class = CustomerSignupForm
+
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.is_authenticated:
+            return redirect(default_url_for_role(user_role(request.user)))
+        return super().dispatch(request, *args, **kwargs)
 
     def form_valid(self, form):
-        role = form.cleaned_data["role"]
-        self.request.session["role"] = role
-        return redirect(default_url_for_role(role))
-
-
-def default_url_for_role(role):
-    return {
-        "customer": "cinema:movies",
-        "staff": "cinema:counter_pos",
-        "scheduler": "cinema:scheduler_showtimes",
-        "manager": "cinema:manager_dashboard",
-    }.get(role, "cinema:movies")
+        user = form.save()
+        customer_group, _ = Group.objects.get_or_create(name="customer")
+        user.groups.add(customer_group)
+        auth_login(self.request, user)
+        messages.success(self.request, "Akun pelanggan dibuat. Selamat datang!")
+        return redirect(default_url_for_role("customer"))
 
 
 class MovieListView(RoleMixin, ListView):
-    required_role = "customer"
     model = Movie
     template_name = "cinema/movies.html"
     context_object_name = "movies"
@@ -137,7 +203,6 @@ class MovieListView(RoleMixin, ListView):
 
 
 class MovieDetailView(RoleMixin, DetailView):
-    required_role = "customer"
     model = Movie
     template_name = "cinema/movie_detail.html"
     htmx_template_name = "cinema/partials/movie_showtime_list.html"
@@ -363,7 +428,7 @@ class OrderListView(RoleMixin, ListView):
         return Order.objects.select_related("payment").prefetch_related("tickets__showtime__movie").all()
 
 
-class OrderDetailView(RoleMixin, DetailView):
+class OrderDetailView(LoginRequiredMixin, RoleMixin, DetailView):
     model = Order
     slug_field = "number"
     slug_url_kwarg = "number"
@@ -380,7 +445,9 @@ class OrderDetailView(RoleMixin, DetailView):
         )
 
 
-class OrderCancelView(View):
+class OrderCancelView(RoleRequiredMixin, View):
+    required_role = "customer"
+
     def post(self, request, number):
         try:
             cancel_order(number)
@@ -390,7 +457,7 @@ class OrderCancelView(View):
         return redirect("cinema:order_detail", number=number)
 
 
-class OrderPrintView(View):
+class OrderPrintView(LoginRequiredMixin, View):
     def post(self, request, number):
         try:
             print_order_tickets(number)
@@ -459,7 +526,9 @@ class RefundQueueView(RoleMixin, ListView):
         return Payment.objects.filter(status=PaymentStatus.REFUND_PENDING).select_related("order")
 
 
-class RefundCompleteView(View):
+class RefundCompleteView(RoleRequiredMixin, View):
+    required_role = "staff"
+
     def post(self, request, pk):
         payment = get_object_or_404(Payment, pk=pk, status=PaymentStatus.REFUND_PENDING)
         payment.status = PaymentStatus.REFUNDED
@@ -512,7 +581,9 @@ class SchedulerShowTimeUpdateView(SchedulerShowTimeCreateView):
         return redirect(self.success_url)
 
 
-class SchedulerShowTimeDisableView(View):
+class SchedulerShowTimeDisableView(RoleRequiredMixin, View):
+    required_role = "scheduler"
+
     def post(self, request, pk):
         try:
             disable_showtime(pk)
@@ -563,7 +634,9 @@ class ManagerMovieUpdateView(RoleMixin, UpdateView):
     success_url = reverse_lazy("cinema:manager_movies")
 
 
-class ManagerMovieToggleView(View):
+class ManagerMovieToggleView(RoleRequiredMixin, View):
+    required_role = "manager"
+
     def post(self, request, pk):
         movie = get_object_or_404(Movie, pk=pk)
         movie.is_active = not movie.is_active
@@ -594,7 +667,9 @@ class ManagerProductUpdateView(RoleMixin, UpdateView):
     success_url = reverse_lazy("cinema:manager_products")
 
 
-class ManagerProductToggleView(View):
+class ManagerProductToggleView(RoleRequiredMixin, View):
+    required_role = "manager"
+
     def post(self, request, pk):
         product = get_object_or_404(Product, pk=pk)
         product.is_active = not product.is_active
@@ -646,7 +721,9 @@ class ManagerStudioUpdateView(RoleMixin, UpdateView):
         return redirect(self.success_url)
 
 
-class ManagerStudioToggleView(View):
+class ManagerStudioToggleView(RoleRequiredMixin, View):
+    required_role = "manager"
+
     def post(self, request, pk):
         studio = get_object_or_404(Studio, pk=pk)
         studio.is_active = not studio.is_active

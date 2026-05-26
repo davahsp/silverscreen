@@ -1,0 +1,27 @@
+{% extends "cinema/auth_base.html" %}
+{% block title %}Masuk - Silver Screen{% endblock %}
+{% block auth_content %}
+<div class="auth-card">
+  <h1 class="auth-title">Masuk</h1>
+  <p class="auth-subtitle">Gunakan akun Anda untuk melanjutkan.</p>
+  <form method="post" class="auth-form">
+    {% csrf_token %}
+    {% if form.non_field_errors %}
+      <div class="auth-error">{{ form.non_field_errors }}</div>
+    {% endif %}
+    <div class="form-group">
+      <label class="form-label" for="{{ form.username.id_for_label }}">Username</label>
+      {{ form.username }}
+      {% if form.username.errors %}<div class="auth-error">{{ form.username.errors }}</div>{% endif %}
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="{{ form.password.id_for_label }}">Password</label>
+      {{ form.password }}
+      {% if form.password.errors %}<div class="auth-error">{{ form.password.errors }}</div>{% endif %}
+    </div>
+    <input type="hidden" name="next" value="{{ next }}">
+    <button class="button button-primary button-full" type="submit">Masuk</button>
+  </form>
+  <p class="auth-alt">Belum punya akun? <a href="{% url 'cinema:register' %}">Daftar sebagai pelanggan</a></p>
+</div>
+{% endblock %}
