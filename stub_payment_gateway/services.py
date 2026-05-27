@@ -130,3 +130,15 @@ def mark_expired(gateway_payment_id, expired_at=None, callback_sender=None):
         payment.save(update_fields=["status", "expired_at"])
     callback_sender(callback_payload(payment, GatewayPaymentStatus.EXPIRED, expired_at))
     return payment
+
+
+def mark_cancelled(gateway_payment_id):
+    with transaction.atomic():
+        payment = GatewayPayment.objects.select_for_update().get(gateway_payment_id=gateway_payment_id)
+        if payment.status == GatewayPaymentStatus.CANCELLED:
+            return payment
+        if payment.status != GatewayPaymentStatus.WAITING_PAYMENT:
+            raise ValidationError("Payment gateway sudah berada pada status final.")
+        payment.status = GatewayPaymentStatus.CANCELLED
+        payment.save(update_fields=["status"])
+    return payment

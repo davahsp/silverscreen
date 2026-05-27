@@ -80,7 +80,7 @@ python -m django expire_gateway_payments --watch --interval 5 --settings=silvers
 
 Online cancellation rules:
 
-- Unpaid order: order becomes `CANCELED`, tickets become `CANCELED`, payment becomes `CANCELED_BEFORE_PAID`.
+- Unpaid order: gateway payment becomes `CANCELLED`, making the VA invalid/stale; order becomes `CANCELED`, tickets become `CANCELED`, payment becomes `CANCELED_BEFORE_PAID`.
 - Paid and unprinted order: order becomes `CANCELED`, tickets become `CANCELED`, payment becomes `REFUND_PENDING`.
 - Printed ticket: cancellation is blocked with `Tiket sudah dicetak, pesanan tidak dapat dibatalkan.`
 
@@ -197,7 +197,7 @@ Important enums:
 - `OrderStatus`: `PENDING`, `CONFIRMED`, `EXPIRED`, `CANCELED`
 - `TicketStatus`: `HELD`, `CONFIRMED`, `EXPIRED`, `CANCELED`, `PRINTED`
 - `PaymentStatus`: `UNPAID`, `PAID`, `EXPIRED`, `REFUND_PENDING`, `REFUNDED`, `CANCELED_BEFORE_PAID`
-- `GatewayPaymentStatus`: `WAITING_PAYMENT`, `PAID`, `EXPIRED`
+- `GatewayPaymentStatus`: `WAITING_PAYMENT`, `PAID`, `EXPIRED`, `CANCELLED`
 
 Seat protection is enforced with a conditional unique constraint so a showtime/seat cannot have more than one active ticket in `HELD`, `CONFIRMED`, or `PRINTED`.
 
@@ -342,6 +342,7 @@ Current test coverage includes:
 - Unknown payment rejection
 - Invalid callback status rejection
 - Unpaid cancellation
+- Unpaid cancellation cancels the provider-side gateway payment
 - Paid unprinted cancellation and refund queue transition
 - Printed ticket cancellation block
 - Atomic onsite order creation

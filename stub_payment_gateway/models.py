@@ -6,6 +6,7 @@ class GatewayPaymentStatus(models.TextChoices):
     WAITING_PAYMENT = "WAITING_PAYMENT", "Menunggu Bayar"
     PAID = "PAID", "Paid"
     EXPIRED = "EXPIRED", "Expired"
+    CANCELLED = "CANCELLED", "Cancelled"
 
 
 class GatewayPayment(models.Model):

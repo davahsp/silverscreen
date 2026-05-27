@@ -11,7 +11,7 @@
         <td class="font-mono">{{ payment.internal_payment_id }}</td>
         <td>{{ payment.order.number }}</td>
         <td>{{ payment.amount|rupiah }}</td>
-        <td>{% include "cinema/partials/status_badge.html" with status=payment.status %}</td>
+        <td>{% include "cinema/partials/status_badge.html" with status=payment.status label=payment.get_status_display %}</td>
         <td><form method="post" action="{% url 'cinema:refund_complete' payment.pk %}">{% csrf_token %}<button class="button button-primary">Tandai Refund Selesai</button></form></td>
       </tr>
     {% empty %}

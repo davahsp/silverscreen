@@ -10,7 +10,7 @@
   <div class="card">
     <div class="card-header">Status Pembayaran</div>
     <div class="card-body">
-      {% include "cinema/partials/status_badge.html" with status=order.payment.status %}
+      {% include "cinema/partials/status_badge.html" with status=order.payment.status label=order.payment.get_status_display %}
       {% if order.payment.status == "UNPAID" %}
         <div class="payment-instruction">
           Transfer tepat sebesar <strong>{{ order.payment.amount|rupiah }}</strong> ke virtual account
@@ -31,7 +31,7 @@
     <div class="card-header">Tiket Ditahan</div>
     <div class="card-body">
       {% for ticket in order.tickets.all %}
-        <div class="order-summary-row"><span>{{ ticket.seat.number }}</span>{% include "cinema/partials/status_badge.html" with status=ticket.status %}</div>
+        <div class="order-summary-row"><span>{{ ticket.seat.number }}</span>{% include "cinema/partials/status_badge.html" with status=ticket.status label=ticket.get_status_display %}</div>
       {% endfor %}
     </div>
   </div>

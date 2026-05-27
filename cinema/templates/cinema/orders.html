@@ -11,8 +11,8 @@
         {% for order in orders %}
           <tr>
             <td class="font-mono">{{ order.number }}</td>
-            <td>{% include "cinema/partials/status_badge.html" with status=order.source %}</td>
-            <td>{% include "cinema/partials/status_badge.html" with status=order.status %}</td>
+            <td>{% include "cinema/partials/status_badge.html" with status=order.source label=order.get_source_display %}</td>
+            <td>{% include "cinema/partials/status_badge.html" with status=order.status label=order.get_status_display %}</td>
             <td>{{ order.total_amount|rupiah }}</td>
             <td>{{ order.created_at|date:"d M Y H:i" }}</td>
             <td><a class="button button-secondary" href="{% url 'cinema:order_detail' order.number %}">Detail</a></td>

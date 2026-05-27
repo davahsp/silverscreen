@@ -8,7 +8,7 @@
     <p class="page-subtitle">{{ order.created_at|date:"d M Y H:i" }} · {{ order.source }}</p>
   </div>
   <div>
-    {% include "cinema/partials/status_badge.html" with status=order.status %}
+    {% include "cinema/partials/status_badge.html" with status=order.status label=order.get_status_display %}
   </div>
 </div>
 <div class="grid-2">
@@ -25,7 +25,7 @@
           <div class="ticket-body">
             <div class="grid-2">
               <div><div class="text-muted">Kursi</div><span class="ticket-seat-badge">{{ ticket.seat.number }}</span></div>
-              <div><div class="text-muted">Status</div>{% include "cinema/partials/status_badge.html" with status=ticket.status %}</div>
+              <div><div class="text-muted">Status</div>{% include "cinema/partials/status_badge.html" with status=ticket.status label=ticket.get_status_display %}</div>
             </div>
             <div class="mt-4"><div class="text-muted">Kode Tiket</div><div class="ticket-code">{{ ticket.code }}</div></div>
             {% if ticket.printed_at %}<div class="text-muted mt-4">Dicetak: {{ ticket.printed_at|date:"d M Y H:i" }}</div>{% endif %}
@@ -38,7 +38,7 @@
     <div class="card mb-4">
       <div class="card-header">Pembayaran</div>
       <div class="card-body">
-        {% include "cinema/partials/status_badge.html" with status=order.payment.status %}
+        {% include "cinema/partials/status_badge.html" with status=order.payment.status label=order.payment.get_status_display %}
         {% if order.payment.status == "UNPAID" %}
           <div class="payment-instruction">
             Transfer tepat sebesar <strong>{{ order.payment.amount|rupiah }}</strong> ke virtual account

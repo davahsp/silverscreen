@@ -15,6 +15,7 @@ body { margin:0; }
 .gw-status.waiting_payment { color:#fbbf24; }
 .gw-status.paid { color:#34d399; }
 .gw-status.expired { color:#94a3b8; }
+.gw-status.cancelled { color:#94a3b8; }
 .gw-btn { display:block; width:100%; padding:14px; border-radius:10px; border:0; font-weight:900; font-size:15px; cursor:pointer; text-align:center; margin-top:12px; }
 .gw-btn-pay { background:linear-gradient(135deg,#3b82f6,#1d4ed8); color:#fff; }
 .gw-btn-expire { background:#1e293b; color:#94a3b8; border:1px solid #334155; }

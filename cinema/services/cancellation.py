@@ -14,6 +14,10 @@ def cancel_order(order_number):
     if tickets.filter(status=TicketStatus.PRINTED).exists():
         raise ValidationError(PRINTED_CANCEL_MESSAGE)
     if payment.status == PaymentStatus.UNPAID:
+        if payment.gateway_payment_id:
+            from stub_payment_gateway.services import mark_cancelled
+
+            mark_cancelled(payment.gateway_payment_id)
         order.status = OrderStatus.CANCELED
         payment.status = PaymentStatus.CANCELED_BEFORE_PAID
         tickets.update(status=TicketStatus.CANCELED)

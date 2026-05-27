@@ -81,7 +81,7 @@ td { padding:12px 14px; border-bottom:1px solid var(--border-lt); vertical-align
 .badge-pending,.badge-held,.badge-unpaid,.badge-waiting_payment { background:var(--s-amber-bg); color:var(--s-amber); }
 .badge-confirmed,.badge-paid,.badge-refunded,.badge-active { background:var(--s-green-bg); color:var(--s-green); }
 .badge-printed { background:var(--s-purple-bg); color:var(--s-purple); }
-.badge-expired,.badge-canceled_before_paid,.badge-inactive { background:var(--s-gray-bg); color:var(--s-gray); }
+.badge-expired,.badge-canceled_before_paid,.badge-cancelled,.badge-inactive { background:var(--s-gray-bg); color:var(--s-gray); }
 .badge-canceled { background:var(--s-red-bg); color:var(--s-red); }
 .badge-refund_pending { background:var(--s-orange-bg); color:var(--s-orange); }
 .badge-online { background:var(--s-blue-bg); color:var(--s-blue); }

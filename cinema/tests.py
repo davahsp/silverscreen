@@ -241,13 +241,31 @@ class SilverScreenServiceTests(TestCase):
 
     def test_unpaid_cancellation_sets_canceled_before_paid(self):
         order = create_online_order(self.showtime.id, [self.seats[0].id], [])
+        gateway_payment = GatewayPayment.objects.get(gateway_payment_id=order.payment.gateway_payment_id)
 
         cancel_order(order.number)
 
         order.refresh_from_db()
+        gateway_payment.refresh_from_db()
         self.assertEqual(order.status, OrderStatus.CANCELED)
         self.assertEqual(order.payment.status, PaymentStatus.CANCELED_BEFORE_PAID)
         self.assertEqual(order.tickets.get().status, TicketStatus.CANCELED)
+        self.assertEqual(gateway_payment.status, GatewayPaymentStatus.CANCELLED)
+
+    def test_unpaid_cancellation_does_not_override_final_gateway_payment(self):
+        order = create_online_order(self.showtime.id, [self.seats[0].id], [])
+        GatewayPayment.objects.filter(gateway_payment_id=order.payment.gateway_payment_id).update(
+            status=GatewayPaymentStatus.PAID,
+            paid_at=timezone.now(),
+        )
+
+        with self.assertRaisesMessage(ValidationError, "Payment gateway sudah berada pada status final."):
+            cancel_order(order.number)
+
+        order.refresh_from_db()
+        self.assertEqual(order.status, OrderStatus.PENDING)
+        self.assertEqual(order.payment.status, PaymentStatus.UNPAID)
+        self.assertEqual(order.tickets.get().status, TicketStatus.HELD)
 
     def test_paid_unprinted_cancellation_goes_to_refund_queue(self):
         order = create_online_order(self.showtime.id, [self.seats[0].id], [])
