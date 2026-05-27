@@ -83,7 +83,7 @@ td { padding:12px 14px; border-bottom:1px solid var(--border-lt); vertical-align
 .status-badge::before { content:""; width:5px; height:5px; border-radius:50%; background:currentColor; }
 .badge-pending,.badge-held,.badge-unpaid,.badge-waiting_payment { background:var(--s-amber-bg); color:var(--s-amber); }
 .badge-confirmed,.badge-paid,.badge-refunded,.badge-active { background:var(--s-green-bg); color:var(--s-green); }
-.badge-printed { background:var(--s-purple-bg); color:var(--s-purple); }
+.badge-used { background:var(--s-purple-bg); color:var(--s-purple); }
 .badge-expired,.badge-canceled_before_paid,.badge-cancelled,.badge-inactive { background:var(--s-gray-bg); color:var(--s-gray); }
 .badge-canceled { background:var(--s-red-bg); color:var(--s-red); }
 .badge-refund_pending { background:var(--s-orange-bg); color:var(--s-orange); }
@@ -159,11 +159,21 @@ td { padding:12px 14px; border-bottom:1px solid var(--border-lt); vertical-align
 .stepper-step.active .stepper-label { color:var(--text-1); }
 .stepper-line.completed { background:var(--red); }
 .pos-layout { display:grid; grid-template-columns:1fr 360px; gap:20px; }
-.ticket-card { max-width:560px; border-radius:18px; background:#fff; border:1px solid var(--border-lt); overflow:hidden; box-shadow:var(--sh-sm); }
-.ticket-card-header { background:#1a1410; color:#fff; padding:20px; }
+.ticket-card { max-width:520px; border-radius:18px; background:#fff; border:1px solid var(--border-lt); overflow:hidden; box-shadow:var(--sh-sm); }
+.ticket-card-header { background:#1a1410; color:#fff; padding:20px; display:flex; align-items:flex-end; justify-content:space-between; gap:16px; }
+.ticket-card-header .status-badge { flex:0 0 auto; align-self:flex-end; margin-bottom:1px; border:1px solid rgba(255,255,255,.16); }
+.ticket-card-header .badge-confirmed { background:rgba(21,128,61,.24); color:#c7f2d2; border-color:rgba(134,239,172,.28); }
+.ticket-card-header .badge-used { background:rgba(109,40,217,.24); color:#ddd2fe; border-color:rgba(196,181,253,.30); }
+.ticket-card-header .badge-held { background:rgba(180,83,9,.24); color:#fde6b0; border-color:rgba(252,211,77,.28); }
+.ticket-card-header .badge-expired { background:rgba(75,85,99,.34); color:#e5e7eb; border-color:rgba(209,213,219,.20); }
+.ticket-card-header .badge-canceled { background:rgba(127,29,29,.42); color:#fecaca; border-color:rgba(248,113,113,.30); }
 .ticket-red-stripe { height:6px; background:var(--red); }
 .ticket-body { padding:20px; }
+.ticket-detail-grid { display:grid; grid-template-columns:minmax(0,1fr) 136px; gap:14px; align-items:center; }
+.ticket-detail-main { min-width:0; }
 .ticket-code { font:900 18px var(--mono); letter-spacing:.04em; }
+.ticket-qr { display:flex; align-items:center; justify-content:flex-end; padding:0; border:0; background:transparent; }
+.ticket-qr img { width:136px; height:136px; display:block; background:transparent; border:0; border-radius:0; padding:0; }
 .ticket-seat-badge { display:inline-flex; padding:4px 12px; border:1.5px solid var(--red-border); border-radius:6px; background:var(--red-light); color:var(--red); font:900 22px var(--mono); }
 .stats-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; }
 .stat-card { background:#fff; border:1.5px solid var(--border-lt); border-radius:var(--r-lg); padding:20px; box-shadow:var(--sh-sm); }
@@ -200,6 +210,9 @@ td { padding:12px 14px; border-bottom:1px solid var(--border-lt); vertical-align
   .nav-tab { flex:1; justify-content:center; font-size:11px; border-bottom:0; border-top:2px solid transparent; }
   .nav-tab.active { border-top-color:var(--red); }
   .grid-2,.grid-3,.grid-4,.pos-layout,.stats-grid { grid-template-columns:1fr; }
+  .ticket-detail-grid { grid-template-columns:1fr; }
+  .ticket-qr { justify-content:flex-start; }
+  .ticket-qr img { width:124px; height:124px; }
   .movie-grid { grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); }
   .stepper-label { font-size:10px; }
   .stepper-circle { width:24px; height:24px; font-size:11px; }

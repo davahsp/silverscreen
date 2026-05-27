@@ -1,3 +1,5 @@
+import uuid
+
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.utils import timezone
@@ -23,7 +25,7 @@ SERVICE_CHARGE_PRICE = 5000
 PAYMENT_EXPIRATION_SECONDS = 900
 
 
-ACTIVE_TICKET_STATUSES = [TicketStatus.HELD, TicketStatus.CONFIRMED, TicketStatus.PRINTED]
+ACTIVE_TICKET_STATUSES = [TicketStatus.HELD, TicketStatus.CONFIRMED, TicketStatus.USED]
 
 
 def unavailable_seat_ids(showtime):
@@ -138,11 +140,11 @@ def create_onsite_order(showtime_id, seat_ids, addons):
     for seat in seats:
         Ticket.objects.create(
             code=next_code(Ticket, "code", "TKT-", 6),
+            qr_identifier=uuid.uuid4(),
             order=order,
             showtime=showtime,
             seat=seat,
-            status=TicketStatus.PRINTED,
-            printed_at=now,
+            status=TicketStatus.CONFIRMED,
         )
     _create_addons_and_charge(order, addons, include_service_charge=False)
     Payment.objects.create(

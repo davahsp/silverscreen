@@ -1,3 +1,6 @@
+import base64
+from io import BytesIO
+
 from django import template
 
 register = template.Library()
@@ -27,3 +30,20 @@ def dict_get(mapping, key):
     if not mapping:
         return None
     return mapping.get(str(key), mapping.get(key))
+
+
+@register.filter
+def qr_svg_data_uri(value):
+    if not value:
+        return ""
+    try:
+        import qrcode
+        from qrcode.image.svg import SvgPathImage
+    except ImportError:
+        return ""
+
+    image = qrcode.make(str(value), image_factory=SvgPathImage, box_size=8, border=1)
+    stream = BytesIO()
+    image.save(stream)
+    payload = base64.b64encode(stream.getvalue()).decode("ascii")
+    return f"data:image/svg+xml;base64,{payload}"

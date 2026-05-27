@@ -60,7 +60,7 @@ Issuing a payment creates a separate `GatewayPayment`, assigns a unique VA accou
 
 Callback behavior:
 
-- `PAID`: payment becomes `PAID`, order becomes `CONFIRMED`, tickets become `CONFIRMED`.
+- `PAID`: payment becomes `PAID`, order becomes `CONFIRMED`, tickets become `CONFIRMED`, and each confirmed ticket receives a unique QR UUID.
 - `EXPIRED`: payment becomes `EXPIRED`, order becomes `EXPIRED`, held tickets become `EXPIRED`, and those seats become bookable again.
 
 Payment and order final states are sourced only from the gateway callback. Countdown displays in Silver Screen and the gateway are visual only.
@@ -81,8 +81,8 @@ python -m django expire_gateway_payments --watch --interval 5 --settings=silvers
 Online cancellation rules:
 
 - Unpaid order: gateway payment becomes `CANCELLED`, making the VA invalid/stale; order becomes `CANCELED`, tickets become `CANCELED`, payment becomes `CANCELED_BEFORE_PAID`.
-- Paid and unprinted order: order becomes `CANCELED`, tickets become `CANCELED`, payment becomes `REFUND_PENDING`.
-- Printed ticket: cancellation is blocked with `Tiket sudah dicetak, pesanan tidak dapat dibatalkan.`
+- Paid confirmed order: order becomes `CANCELED`, tickets become `CANCELED`, payment becomes `REFUND_PENDING`.
+- Used ticket: cancellation is blocked with `Tiket sudah digunakan, pesanan tidak dapat dibatalkan.`
 
 Staff can complete refunds manually from the refund queue. Refund automation is intentionally not implemented.
 
@@ -90,15 +90,23 @@ Staff can complete refunds manually from the refund queue. Refund automation is 
 
 Onsite/counter orders do not create pending records.
 
-The staff POS flow creates records only after the customer pays. The `Buat & Cetak Tiket` action atomically creates:
+The staff POS flow creates records only after the customer pays. The `Buat Order & Buka Tiket` action atomically creates:
 
 - `Order` with `channel=ONSITE` and `status=CONFIRMED`
 - `Payment` with `status=PAID`
-- `Ticket` records with `status=PRINTED`
-- `printed_at`
+- `Ticket` records with `status=CONFIRMED`
+- a unique QR UUID for each ticket
 - add-ons and charges
 
 No onsite `PENDING` or `HELD` lifecycle is used.
+
+Printing tickets is not a status transition. It only creates a physical copy of the digital ticket; ticket status remains `CONFIRMED`.
+
+### Ticket QR and Admission Scan
+
+Each ticket receives a hard-to-guess UUID QR identifier when it becomes `CONFIRMED`. The identifier stays attached to the ticket after it becomes `USED`.
+
+The scanner/gate application is outside this Django app. It is expected to share the same database, read the QR UUID, locate the matching ticket, and mark it `USED`. If a QR is scanned again after the ticket is already `USED`, the external scanner should reject entry.
 
 ### Showtime Management
 
@@ -108,7 +116,7 @@ Showtime disable is blocked if active tickets exist with status:
 
 - `HELD`
 - `CONFIRMED`
-- `PRINTED`
+- `USED`
 
 Blocked disable message:
 
@@ -195,11 +203,11 @@ Important enums:
 - `ProductCategory`: `FOOD`, `DRINK`, `COMBO`, `MERCHANDISE`, `OTHER`
 - `OrderChannel`: `ONLINE`, `ONSITE`
 - `OrderStatus`: `PENDING`, `CONFIRMED`, `EXPIRED`, `CANCELED`
-- `TicketStatus`: `HELD`, `CONFIRMED`, `EXPIRED`, `CANCELED`, `PRINTED`
+- `TicketStatus`: `HELD`, `CONFIRMED`, `USED`, `EXPIRED`, `CANCELED`
 - `PaymentStatus`: `UNPAID`, `PAID`, `EXPIRED`, `REFUND_PENDING`, `REFUNDED`, `CANCELED_BEFORE_PAID`
 - `GatewayPaymentStatus`: `WAITING_PAYMENT`, `PAID`, `EXPIRED`, `CANCELLED`
 
-Seat protection is enforced with a conditional unique constraint so a showtime/seat cannot have more than one active ticket in `HELD`, `CONFIRMED`, or `PRINTED`.
+Seat protection is enforced with a conditional unique constraint so a showtime/seat cannot have more than one active ticket in `HELD`, `CONFIRMED`, or `USED`.
 
 ## Main Routes
 
@@ -344,8 +352,11 @@ Current test coverage includes:
 - Invalid callback status rejection
 - Unpaid cancellation
 - Unpaid cancellation cancels the provider-side gateway payment
-- Paid unprinted cancellation and refund queue transition
-- Printed ticket cancellation block
+- Paid confirmed cancellation and refund queue transition
+- Used ticket cancellation block
+- Used ticket seat and showtime protection
+- QR UUID assignment for confirmed tickets
+- Printing tickets without changing ticket status
 - Atomic onsite order creation
 - Showtime derived `end_at`
 - Showtime disable blocking
@@ -372,5 +383,6 @@ Current test coverage includes:
 - The studio layout builder is intentionally simple.
 - SQLite is used by default.
 - No real payment gateway integration exists.
+- No scanner/gate UI or API is implemented; an external scanner sharing the same DB marks tickets as `USED`.
 - No automated refund processing exists.
 - Online expiration is callback-driven through the stub gateway worker or simulate-expire action.

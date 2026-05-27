@@ -28,10 +28,15 @@
     </div>
   </div>
   <div class="card">
-    <div class="card-header">Tiket Ditahan</div>
+    <div class="card-header">Tiket Pesanan</div>
     <div class="card-body">
       {% for ticket in order.tickets.all %}
         <div class="order-summary-row"><span>{{ ticket.seat.number }}</span>{% include "cinema/partials/status_badge.html" with status=ticket.status label=ticket.get_status_display %}</div>
+        {% if ticket.qr_identifier %}
+          <div class="ticket-qr mt-4 mb-4">
+            <img src="{{ ticket.qr_identifier|qr_svg_data_uri }}" alt="QR tiket {{ ticket.code }}">
+          </div>
+        {% endif %}
       {% endfor %}
     </div>
   </div>

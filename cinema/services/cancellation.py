@@ -3,7 +3,7 @@ from django.db import transaction
 
 from cinema.models import Order, OrderStatus, PaymentStatus, TicketStatus
 
-PRINTED_CANCEL_MESSAGE = "Tiket sudah dicetak, pesanan tidak dapat dibatalkan."
+USED_CANCEL_MESSAGE = "Tiket sudah digunakan, pesanan tidak dapat dibatalkan."
 
 
 @transaction.atomic
@@ -11,8 +11,8 @@ def cancel_order(order_number):
     order = Order.objects.select_for_update().get(number=order_number)
     payment = order.payment
     tickets = order.tickets.select_for_update()
-    if tickets.filter(status=TicketStatus.PRINTED).exists():
-        raise ValidationError(PRINTED_CANCEL_MESSAGE)
+    if tickets.filter(status=TicketStatus.USED).exists():
+        raise ValidationError(USED_CANCEL_MESSAGE)
     if payment.status == PaymentStatus.UNPAID:
         if payment.gateway_payment_id:
             from stub_payment_gateway.services import mark_cancelled
@@ -36,14 +36,7 @@ def cancel_order(order_number):
 
 @transaction.atomic
 def print_order_tickets(order_number):
-    from django.utils import timezone
-
     order = Order.objects.select_for_update().get(number=order_number)
     if order.status != OrderStatus.CONFIRMED:
         raise ValidationError("Hanya pesanan terkonfirmasi yang dapat dicetak.")
-    now = timezone.now()
-    order.tickets.select_for_update().filter(status=TicketStatus.CONFIRMED).update(
-        status=TicketStatus.PRINTED,
-        printed_at=now,
-    )
     return order

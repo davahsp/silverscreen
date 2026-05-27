@@ -5,7 +5,7 @@ from django.db import transaction
 
 from cinema.models import ShowTime, TicketStatus
 
-ACTIVE_SHOWTIME_TICKET_STATUSES = [TicketStatus.HELD, TicketStatus.CONFIRMED, TicketStatus.PRINTED]
+ACTIVE_SHOWTIME_TICKET_STATUSES = [TicketStatus.HELD, TicketStatus.CONFIRMED, TicketStatus.USED]
 DISABLE_BLOCK_MESSAGE = "Showtime tidak dapat dinonaktifkan karena sudah memiliki tiket aktif."
 
 

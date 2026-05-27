@@ -425,7 +425,7 @@ class OrderPrintView(LoginRequiredMixin, View):
     def post(self, request, number):
         try:
             print_order_tickets(number)
-            messages.success(request, "Tiket berhasil dicetak.")
+            messages.success(request, "Tiket siap dicetak.")
         except ValidationError as exc:
             messages.error(request, "; ".join(exc.messages))
         return redirect("cinema:order_detail", number=number)
@@ -476,7 +476,7 @@ class CounterPOSView(RoleMixin, TemplateView):
         except (KeyError, ValueError, ValidationError) as exc:
             messages.error(request, "; ".join(exc.messages) if hasattr(exc, "messages") else str(exc))
             return self.get(request, *args, **kwargs)
-        messages.success(request, "Order onsite dibuat dan tiket dicetak.")
+        messages.success(request, "Order onsite dibuat. Tiket siap dicetak.")
         return redirect("cinema:order_detail", number=order.number)
 
 

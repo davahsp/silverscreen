@@ -2,7 +2,7 @@
 {% load cinema_tags %}
 {% block title %}Counter POS{% endblock %}
 {% block content %}
-<div class="page-header"><div><h1 class="page-title">Counter POS</h1><p class="page-subtitle">Order onsite dibuat setelah pelanggan membayar dan langsung mencetak tiket.</p></div></div>
+<div class="page-header"><div><h1 class="page-title">Counter POS</h1><p class="page-subtitle">Order onsite dibuat setelah pelanggan membayar. Tiket langsung tersedia untuk dicetak.</p></div></div>
 <div class="card mb-4">
   <div class="card-body">
     <form method="get">
@@ -49,7 +49,7 @@
             <input type="number" min="0" value="0" name="product_{{ product.id }}">
           </div>
         {% endfor %}
-        <button class="button button-primary button-full">Buat & Cetak Tiket</button>
+        <button class="button button-primary button-full">Buat Order & Buka Tiket</button>
       </div>
     </div>
   </div>

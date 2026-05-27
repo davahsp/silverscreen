@@ -30,7 +30,7 @@ from cinema.models import (
     TicketStatus,
 )
 from cinema.services.booking import create_online_order, create_onsite_order
-from cinema.services.cancellation import PRINTED_CANCEL_MESSAGE, cancel_order
+from cinema.services.cancellation import USED_CANCEL_MESSAGE, cancel_order, print_order_tickets
 from cinema.services.payments import apply_payment_callback
 from cinema.services.scheduling import disable_showtime, save_showtime
 from cinema.services.studios import save_studio_layout
@@ -135,7 +135,9 @@ class SilverScreenServiceTests(TestCase):
         order.refresh_from_db()
         self.assertEqual(order.status, OrderStatus.CONFIRMED)
         self.assertEqual(order.payment.status, PaymentStatus.PAID)
-        self.assertEqual(order.tickets.get().status, TicketStatus.CONFIRMED)
+        ticket = order.tickets.get()
+        self.assertEqual(ticket.status, TicketStatus.CONFIRMED)
+        self.assertIsNotNone(ticket.qr_identifier)
 
     def test_expired_callback_expires_order_and_releases_seat(self):
         order = create_online_order(self.showtime.id, [self.seats[0].id], [])
@@ -267,7 +269,7 @@ class SilverScreenServiceTests(TestCase):
         self.assertEqual(order.payment.status, PaymentStatus.UNPAID)
         self.assertEqual(order.tickets.get().status, TicketStatus.HELD)
 
-    def test_paid_unprinted_cancellation_goes_to_refund_queue(self):
+    def test_paid_confirmed_cancellation_goes_to_refund_queue(self):
         order = create_online_order(self.showtime.id, [self.seats[0].id], [])
         apply_payment_callback(
             {
@@ -283,21 +285,39 @@ class SilverScreenServiceTests(TestCase):
         self.assertEqual(order.payment.status, PaymentStatus.REFUND_PENDING)
         self.assertEqual(order.tickets.get().status, TicketStatus.CANCELED)
 
-    def test_printed_ticket_cancellation_is_blocked(self):
+    def test_used_ticket_cancellation_is_blocked_and_keeps_qr_identifier(self):
         order = create_onsite_order(self.showtime.id, [self.seats[0].id], [])
+        ticket = order.tickets.get()
+        qr_identifier = ticket.qr_identifier
+        ticket.status = TicketStatus.USED
+        ticket.save(update_fields=["status"])
 
-        with self.assertRaisesMessage(ValidationError, PRINTED_CANCEL_MESSAGE):
+        with self.assertRaisesMessage(ValidationError, USED_CANCEL_MESSAGE):
             cancel_order(order.number)
 
-    def test_onsite_order_is_confirmed_paid_and_printed_without_pending(self):
+        ticket.refresh_from_db()
+        self.assertEqual(ticket.qr_identifier, qr_identifier)
+
+    def test_onsite_order_is_confirmed_paid_and_has_qr_without_pending(self):
         order = create_onsite_order(self.showtime.id, [self.seats[0].id], [(self.product.id, 1)])
 
         self.assertEqual(order.channel, OrderChannel.ONSITE)
         self.assertEqual(order.status, OrderStatus.CONFIRMED)
         self.assertEqual(order.payment.status, PaymentStatus.PAID)
         ticket = order.tickets.get()
-        self.assertEqual(ticket.status, TicketStatus.PRINTED)
-        self.assertIsNotNone(ticket.printed_at)
+        self.assertEqual(ticket.status, TicketStatus.CONFIRMED)
+        self.assertIsNotNone(ticket.qr_identifier)
+
+    def test_print_order_tickets_does_not_change_ticket_status_or_qr_identifier(self):
+        order = create_onsite_order(self.showtime.id, [self.seats[0].id], [])
+        ticket = order.tickets.get()
+        qr_identifier = ticket.qr_identifier
+
+        print_order_tickets(order.number)
+
+        ticket.refresh_from_db()
+        self.assertEqual(ticket.status, TicketStatus.CONFIRMED)
+        self.assertEqual(ticket.qr_identifier, qr_identifier)
 
     def test_showtime_end_at_and_disable_rules(self):
         self.assertEqual(self.showtime.duration_minutes, self.movie.runtime_minutes)
@@ -315,6 +335,17 @@ class SilverScreenServiceTests(TestCase):
         create_online_order(active.id, [self.seats[0].id], [])
         with self.assertRaises(ValidationError):
             disable_showtime(active.id)
+
+    def test_used_ticket_blocks_seat_resale_and_showtime_disable(self):
+        order = create_onsite_order(self.showtime.id, [self.seats[0].id], [])
+        ticket = order.tickets.get()
+        ticket.status = TicketStatus.USED
+        ticket.save(update_fields=["status"])
+
+        with self.assertRaises(ValidationError):
+            create_online_order(self.showtime.id, [self.seats[0].id], [])
+        with self.assertRaises(ValidationError):
+            disable_showtime(self.showtime.id)
 
     def test_studio_capacity_and_zero_seat_validation(self):
         self.assertEqual(self.studio.capacity, 3)
@@ -452,6 +483,7 @@ class SilverScreenServiceTests(TestCase):
             self.assertNotContains(response, "Gateway Payment")
             self.assertNotContains(response, "Gateway ID")
             self.assertNotContains(response, "Expired")
+            self.assertNotContains(response, "QR Identifier")
 
     def test_order_list_cards_link_to_order_detail_and_show_movie_summary(self):
         self.movie.main_picture = "/static/posters/ruang-sunyi.jpg"
@@ -485,6 +517,9 @@ class SilverScreenServiceTests(TestCase):
 
         response = self.client.get(reverse("cinema:order_detail", args=[order.number]))
         self.assertContains(response, "Dibayar pada")
+        self.assertContains(response, "data:image/svg+xml;base64")
+        self.assertNotContains(response, "QR Identifier")
+        self.assertNotContains(response, str(order.tickets.get().qr_identifier))
         self.assertNotContains(response, "Transfer tepat sebesar")
         self.assertNotContains(response, "Sisa Waktu")
         self.assertNotContains(response, "data-countdown")

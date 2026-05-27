@@ -5,7 +5,7 @@
 <div class="page-header">
   <div>
     <h1 class="page-title">{{ order.number }}</h1>
-    <p class="page-subtitle">{{ order.created_at|date:"d M Y H:i" }} · {{ order.get_channel_display }}</p>
+    <p class="page-subtitle">{{ order.created_at|date:"d M Y H:i" }} &middot; {{ order.get_channel_display }}</p>
   </div>
   <div>
     {% include "cinema/partials/status_badge.html" with status=order.status label=order.get_status_display %}
@@ -18,17 +18,31 @@
       {% for ticket in order.tickets.all %}
         <div class="ticket-card mb-4">
           <div class="ticket-card-header">
-            <strong>{{ ticket.showtime.movie.title }}</strong>
-            <div>{{ ticket.showtime.studio.name }} · {{ ticket.showtime.start_at|date:"d M Y H:i" }}</div>
+            <div>
+              <strong>{{ ticket.showtime.movie.title }}</strong>
+              <div>{{ ticket.showtime.studio.name }} &middot; {{ ticket.showtime.start_at|date:"d M Y H:i" }}</div>
+            </div>
+            {% include "cinema/partials/status_badge.html" with status=ticket.status label=ticket.get_status_display %}
           </div>
           <div class="ticket-red-stripe"></div>
           <div class="ticket-body">
-            <div class="grid-2">
-              <div><div class="text-muted">Kursi</div><span class="ticket-seat-badge">{{ ticket.seat.number }}</span></div>
-              <div><div class="text-muted">Status</div>{% include "cinema/partials/status_badge.html" with status=ticket.status label=ticket.get_status_display %}</div>
+            <div class="ticket-detail-grid">
+              <div class="ticket-detail-main">
+                <div>
+                  <div class="text-muted">Kursi</div>
+                  <span class="ticket-seat-badge">{{ ticket.seat.number }}</span>
+                </div>
+                <div class="mt-4">
+                  <div class="text-muted">Kode Tiket</div>
+                  <div class="ticket-code">{{ ticket.code }}</div>
+                </div>
+              </div>
+              {% if ticket.qr_identifier %}
+                <div class="ticket-qr">
+                  <img src="{{ ticket.qr_identifier|qr_svg_data_uri }}" alt="QR tiket {{ ticket.code }}">
+                </div>
+              {% endif %}
             </div>
-            <div class="mt-4"><div class="text-muted">Kode Tiket</div><div class="ticket-code">{{ ticket.code }}</div></div>
-            {% if ticket.printed_at %}<div class="text-muted mt-4">Dicetak: {{ ticket.printed_at|date:"d M Y H:i" }}</div>{% endif %}
           </div>
         </div>
       {% endfor %}
@@ -57,7 +71,7 @@
     <div class="card">
       <div class="card-header">Aksi</div>
       <div class="card-body">
-        <form method="post" action="{% url 'cinema:order_print' order.number %}" class="mb-4">{% csrf_token %}<button class="button button-primary button-full">Cetak Tiket</button></form>
+        <button type="button" class="button button-primary button-full mb-4" onclick="window.print()">Cetak Tiket</button>
         <form method="post" action="{% url 'cinema:order_cancel' order.number %}">{% csrf_token %}<button class="button button-danger button-full">Batalkan Pesanan</button></form>
       </div>
     </div>

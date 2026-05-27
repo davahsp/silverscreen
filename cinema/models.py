@@ -35,9 +35,9 @@ class OrderStatus(models.TextChoices):
 class TicketStatus(models.TextChoices):
     HELD = "HELD", "Held"
     CONFIRMED = "CONFIRMED", "Confirmed"
+    USED = "USED", "Used"
     EXPIRED = "EXPIRED", "Expired"
     CANCELED = "CANCELED", "Canceled"
-    PRINTED = "PRINTED", "Printed"
 
 
 class PaymentStatus(models.TextChoices):
@@ -186,18 +186,18 @@ class Order(models.Model):
 
 class Ticket(models.Model):
     code = models.CharField(max_length=32, unique=True)
+    qr_identifier = models.UUIDField(null=True, blank=True, unique=True)
     order = models.ForeignKey(Order, related_name="tickets", on_delete=models.CASCADE)
     showtime = models.ForeignKey(ShowTime, related_name="tickets", on_delete=models.PROTECT)
     seat = models.ForeignKey(Seat, on_delete=models.PROTECT)
     status = models.CharField(max_length=20, choices=TicketStatus.choices)
-    printed_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         ordering = ["showtime", "seat__grid_y_pos", "seat__grid_x_pos"]
         constraints = [
             models.UniqueConstraint(
                 fields=["showtime", "seat"],
-                condition=Q(status__in=[TicketStatus.HELD, TicketStatus.CONFIRMED, TicketStatus.PRINTED]),
+                condition=Q(status__in=[TicketStatus.HELD, TicketStatus.CONFIRMED, TicketStatus.USED]),
                 name="unique_active_ticket_per_showtime_seat",
             )
         ]

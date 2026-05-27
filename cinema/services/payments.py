@@ -1,3 +1,5 @@
+import uuid
+
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.utils.dateparse import parse_datetime
@@ -35,7 +37,10 @@ def apply_payment_callback(payload):
         payment.paid_at = parse_datetime(payload.get("paid_at") or "") or None
         order.status = OrderStatus.CONFIRMED
         order.save(update_fields=["status"])
-        order.tickets.filter(status=TicketStatus.HELD).update(status=TicketStatus.CONFIRMED)
+        for ticket in order.tickets.select_for_update().filter(status=TicketStatus.HELD):
+            ticket.status = TicketStatus.CONFIRMED
+            ticket.qr_identifier = uuid.uuid4()
+            ticket.save(update_fields=["status", "qr_identifier"])
         payment.save(update_fields=["status", "paid_at"])
         return payment
 
