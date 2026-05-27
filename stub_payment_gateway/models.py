@@ -11,11 +11,13 @@ class GatewayPaymentStatus(models.TextChoices):
 class GatewayPayment(models.Model):
     gateway_payment_id = models.CharField(max_length=32, unique=True)
     internal_payment_id = models.CharField(max_length=32)
+    va_account = models.CharField(max_length=32, unique=True)
     client_id = models.CharField(max_length=80, default="SILVERSCREEN")
     amount = models.PositiveIntegerField()
     issued_at = models.DateTimeField(default=timezone.now)
     expiration_in = models.PositiveIntegerField(default=900)
     expired_at = models.DateTimeField()
+    paid_at = models.DateTimeField(null=True, blank=True)
     status = models.CharField(
         max_length=20,
         choices=GatewayPaymentStatus.choices,

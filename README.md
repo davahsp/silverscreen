@@ -37,7 +37,7 @@ On order creation, the system creates:
 - `Payment` with `status=UNPAID`
 - optional `OrderAddon` records
 - service charge via `OrderCharge`
-- a provider-side payment in the stub payment gateway
+- a provider-side payment in the stub payment gateway with a unique VA account
 
 Payment success is not triggered from the Silver Screen order page. The customer must open the stub gateway page, where success or expiration dispatches the callback behavior.
 
@@ -50,17 +50,31 @@ The main app owns the internal `Payment` model. The stub gateway owns the separa
 Implemented endpoints:
 
 - `POST /stub/payment-gateway/issue-payment/`
+- `GET /stub/payment-gateway/`
 - `GET /stub/payment-gateway/pay/<gateway_payment_id>/`
 - `POST /stub/payment-gateway/pay/<gateway_payment_id>/success/`
 - `POST /stub/payment-gateway/pay/<gateway_payment_id>/expire/`
 - `POST /payments/callback/`
+
+Issuing a payment creates a separate `GatewayPayment`, assigns a unique VA account, and returns gateway ID, payment URL, `expired_in`, `expires_at`, and VA account data. Silver Screen stores those details on its internal `Payment` for display and reconciliation.
 
 Callback behavior:
 
 - `PAID`: payment becomes `PAID`, order becomes `CONFIRMED`, tickets become `CONFIRMED`.
 - `EXPIRED`: payment becomes `EXPIRED`, order becomes `EXPIRED`, held tickets become `EXPIRED`, and those seats become bookable again.
 
+Payment and order final states are sourced only from the gateway callback. Countdown displays in Silver Screen and the gateway are visual only.
+
 No real gateway integration is included.
+
+Stub worker commands:
+
+```powershell
+python -m django expire_gateway_payments --settings=silverscreen.settings
+python -m django expire_gateway_payments --watch --interval 5 --settings=silverscreen.settings
+```
+
+`expire_gateway_payments` is the authoritative gateway-side expiry worker and sends callbacks to `STUB_GATEWAY_CALLBACK_URL`. Silver Screen does not run a payment status worker; its countdown display is JavaScript-only and compares the browser's current time with the payment expiration time.
 
 ### Cancellation and Refund
 
@@ -173,6 +187,8 @@ Stub gateway model:
 
 - `GatewayPayment`
 
+Payment records on both sides store a VA account for the stub transfer flow.
+
 Important enums:
 
 - `AgeRating`: `ALL_AGE`, `R7`, `R13`, `R17`, `R21`
@@ -222,6 +238,10 @@ Authentication:
 - `/login/`
 - `/logout/`
 - `/register/` (customer self-signup)
+
+Temporary stub navigation:
+
+- `/stub/payment-gateway/` is linked from every authenticated role navigation for demo access.
 
 ## UI Implementation
 
@@ -312,9 +332,12 @@ Current test coverage includes:
 - Online order creation
 - Held ticket creation
 - Unpaid payment creation
+- Gateway VA assignment and issue-payment response data
 - Seat unavailability prevention
 - Paid callback
 - Expired callback
+- Gateway paid and expired simulation callback payloads
+- Gateway expiration worker behavior
 - Held seat release after expiration
 - Unknown payment rejection
 - Invalid callback status rejection
@@ -348,4 +371,4 @@ Current test coverage includes:
 - SQLite is used by default.
 - No real payment gateway integration exists.
 - No automated refund processing exists.
-- No manual online expiration handler exists; online expiration is callback-driven through the stub gateway.
+- Online expiration is callback-driven through the stub gateway worker or simulate-expire action.

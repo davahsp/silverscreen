@@ -19,21 +19,25 @@ ROLE_NAVIGATION = {
     "customer": [
         {"label": "Pilih Film", "target": "cinema:movies"},
         {"label": "Pesanan Saya", "target": "cinema:orders"},
+        {"label": "Stub Gateway", "target": "stub_gateway:payments"},
     ],
     "staff": [
         {"label": "Counter POS", "target": "cinema:counter_pos"},
         {"label": "Antrian Refund", "target": "cinema:refund_queue"},
         {"label": "Cari Pesanan", "target": "cinema:order_lookup"},
+        {"label": "Stub Gateway", "target": "stub_gateway:payments"},
     ],
     "scheduler": [
         {"label": "Daftar Showtime", "target": "cinema:scheduler_showtimes"},
         {"label": "Jadwalkan", "target": "cinema:scheduler_showtime_new"},
+        {"label": "Stub Gateway", "target": "stub_gateway:payments"},
     ],
     "manager": [
         {"label": "Dashboard", "target": "cinema:manager_dashboard"},
         {"label": "Film", "target": "cinema:manager_movies"},
         {"label": "Produk", "target": "cinema:manager_products"},
         {"label": "Studio", "target": "cinema:manager_studios"},
+        {"label": "Stub Gateway", "target": "stub_gateway:payments"},
     ],
 }
 

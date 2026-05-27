@@ -124,3 +124,5 @@ STATIC_URL = 'static/'
 LOGIN_URL = "/login/"
 LOGIN_REDIRECT_URL = "/"
 LOGOUT_REDIRECT_URL = "/login/"
+
+STUB_GATEWAY_CALLBACK_URL = "http://127.0.0.1:8000/payments/callback/"

@@ -22,6 +22,8 @@ def apply_payment_callback(payload):
 
     if payment.gateway_payment_id != gateway_payment_id:
         raise ValidationError("Gateway payment id tidak cocok.")
+    if payload.get("va_account") and payment.va_account and payment.va_account != payload.get("va_account"):
+        raise ValidationError("Virtual account tidak cocok.")
     if payment.status == status:
         return payment
     if payment.status not in [PaymentStatus.UNPAID]:

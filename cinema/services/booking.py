@@ -114,8 +114,9 @@ def create_online_order(showtime_id, seat_ids, addons):
     )
     payment.gateway_payment_id = issued.gateway_payment_id
     payment.payment_url = issued.payment_url
+    payment.va_account = issued.va_account
     payment.expired_at = issued.expires_at
-    payment.save(update_fields=["gateway_payment_id", "payment_url", "expired_at"])
+    payment.save(update_fields=["gateway_payment_id", "payment_url", "va_account", "expired_at"])
     return order
 
 

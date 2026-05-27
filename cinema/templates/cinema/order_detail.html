@@ -39,8 +39,15 @@
       <div class="card-header">Pembayaran</div>
       <div class="card-body">
         {% include "cinema/partials/status_badge.html" with status=order.payment.status %}
-        <div class="order-summary-row"><span>Internal ID</span><strong class="font-mono">{{ order.payment.internal_payment_id }}</strong></div>
-        <div class="order-summary-row"><span>Gateway ID</span><strong class="font-mono">{{ order.payment.gateway_payment_id|default:"-" }}</strong></div>
+        {% if order.payment.status == "UNPAID" %}
+          <div class="payment-instruction">
+            Transfer tepat sebesar <strong>{{ order.payment.amount|rupiah }}</strong> ke virtual account
+            <strong class="font-mono">{{ order.payment.va_account }}</strong> sebelum waktu habis.
+          </div>
+          <div class="order-summary-row"><span>Sisa Waktu</span><strong class="font-mono" data-countdown="{{ order.payment.expired_at|date:'c' }}">-</strong></div>
+        {% elif order.payment.status == "PAID" %}
+          <div class="order-summary-row"><span>Dibayar pada</span><strong>{{ order.payment.paid_at|date:"d M Y H:i" }}</strong></div>
+        {% endif %}
         <div class="order-summary-total"><span>Total</span><span>{{ order.payment.amount|rupiah }}</span></div>
         {% if order.payment.payment_url and order.payment.status == "UNPAID" %}
           <a class="button button-gold button-full mt-4" href="{{ order.payment.payment_url }}">Buka Halaman Gateway</a>
@@ -56,4 +63,19 @@
     </div>
   </div>
 </div>
+{% if order.payment.status == "UNPAID" %}
+  <script>
+    const countdown = document.querySelector("[data-countdown]");
+    function renderCountdown() {
+      if (!countdown || !countdown.dataset.countdown) return;
+      const target = new Date(countdown.dataset.countdown).getTime();
+      const remaining = Math.max(0, target - Date.now());
+      const minutes = Math.floor(remaining / 60000);
+      const seconds = Math.floor((remaining % 60000) / 1000);
+      countdown.textContent = `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+    }
+    renderCountdown();
+    setInterval(renderCountdown, 1000);
+  </script>
+{% endif %}
 {% endblock %}

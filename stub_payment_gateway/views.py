@@ -8,12 +8,10 @@ from django.utils import timezone
 from django.views import View
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
-from django.views.generic import DetailView
+from django.views.generic import DetailView, ListView
 
-from cinema.services.payments import apply_payment_callback
-
-from .models import GatewayPayment, GatewayPaymentStatus
-from .services import issue_payment
+from .models import GatewayPayment
+from .services import issue_payment, mark_expired, mark_paid
 
 
 @method_decorator(csrf_exempt, name="dispatch")
@@ -36,9 +34,18 @@ class IssuePaymentView(View):
             {
                 "gateway_payment_id": issued.gateway_payment_id,
                 "payment_url": issued.payment_url,
+                "expired_in": issued.expired_in,
                 "expires_at": issued.expires_at.isoformat(),
+                "va_account": issued.va_account,
             }
         )
+
+
+class GatewayPaymentListView(ListView):
+    model = GatewayPayment
+    template_name = "stub_payment_gateway/list.html"
+    context_object_name = "payments"
+    paginate_by = 30
 
 
 class GatewayPaymentView(DetailView):
@@ -52,33 +59,18 @@ class GatewayPaymentView(DetailView):
 class GatewaySuccessView(View):
     def post(self, request, gateway_payment_id):
         gateway_payment = get_object_or_404(GatewayPayment, gateway_payment_id=gateway_payment_id)
-        if gateway_payment.status == GatewayPaymentStatus.WAITING_PAYMENT:
-            gateway_payment.status = GatewayPaymentStatus.PAID
-            gateway_payment.save(update_fields=["status"])
-            apply_payment_callback(
-                {
-                    "internal_payment_id": gateway_payment.internal_payment_id,
-                    "gateway_payment_id": gateway_payment.gateway_payment_id,
-                    "status": "PAID",
-                    "paid_at": timezone.now().isoformat(),
-                }
-            )
+        try:
+            mark_paid(gateway_payment_id, paid_at=timezone.now())
+        except ValidationError:
+            pass
         return redirect(reverse("stub_gateway:pay", args=[gateway_payment.gateway_payment_id]))
 
 
 class GatewayExpireView(View):
     def post(self, request, gateway_payment_id):
         gateway_payment = get_object_or_404(GatewayPayment, gateway_payment_id=gateway_payment_id)
-        if gateway_payment.status == GatewayPaymentStatus.WAITING_PAYMENT:
-            gateway_payment.status = GatewayPaymentStatus.EXPIRED
-            gateway_payment.expired_at = timezone.now()
-            gateway_payment.save(update_fields=["status", "expired_at"])
-            apply_payment_callback(
-                {
-                    "internal_payment_id": gateway_payment.internal_payment_id,
-                    "gateway_payment_id": gateway_payment.gateway_payment_id,
-                    "status": "EXPIRED",
-                    "expired_at": gateway_payment.expired_at.isoformat(),
-                }
-            )
+        try:
+            mark_expired(gateway_payment_id, expired_at=timezone.now())
+        except ValidationError:
+            pass
         return redirect(reverse("stub_gateway:pay", args=[gateway_payment.gateway_payment_id]))

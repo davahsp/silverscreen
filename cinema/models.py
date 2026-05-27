@@ -209,6 +209,7 @@ class Ticket(models.Model):
 class Payment(models.Model):
     internal_payment_id = models.CharField(max_length=32, unique=True)
     gateway_payment_id = models.CharField(max_length=32, blank=True)
+    va_account = models.CharField(max_length=32, blank=True)
     order = models.OneToOneField(Order, related_name="payment", on_delete=models.CASCADE)
     amount = models.PositiveIntegerField()
     status = models.CharField(max_length=30, choices=PaymentStatus.choices)

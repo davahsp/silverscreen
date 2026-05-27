@@ -120,6 +120,7 @@ td { padding:12px 14px; border-bottom:1px solid var(--border-lt); vertical-align
 .addon-card { border:1.5px solid var(--border-lt); border-radius:var(--r-md); padding:12px; background:#fff; }
 .order-summary-row, .order-summary-total { display:flex; justify-content:space-between; gap:12px; padding:7px 0; border-bottom:1px solid var(--border-lt); }
 .order-summary-total { border-top:2px solid var(--text-1); border-bottom:0; margin-top:8px; font-weight:900; font-size:16px; color:var(--red); }
+.payment-instruction { margin:14px 0; padding:12px; border:1px solid var(--border-lt); border-radius:var(--r-sm); background:var(--bg-subtle); line-height:1.45; }
 .summary-table { display:grid; gap:0; margin-bottom:12px; border:1px solid var(--border-lt); border-radius:var(--r-sm); overflow:hidden; }
 .summary-table-head, .summary-table-row { display:grid; grid-template-columns:minmax(72px, 1fr) 34px minmax(64px, .7fr) minmax(74px, .8fr); gap:8px; align-items:center; padding:9px 10px; border-bottom:1px solid var(--border-lt); }
 .summary-table-head { background:var(--bg-subtle); color:var(--text-3); font-size:11px; font-weight:900; text-transform:uppercase; }

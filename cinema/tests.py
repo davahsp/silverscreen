@@ -1,5 +1,7 @@
 import json
+from io import StringIO
 from datetime import timedelta
+from unittest.mock import patch
 
 from django.core.exceptions import ValidationError
 from django.contrib.auth.models import Group, User
@@ -32,6 +34,9 @@ from cinema.services.cancellation import PRINTED_CANCEL_MESSAGE, cancel_order
 from cinema.services.payments import apply_payment_callback
 from cinema.services.scheduling import disable_showtime, save_showtime
 from cinema.services.studios import save_studio_layout
+from stub_payment_gateway.management.commands.expire_gateway_payments import expire_due_gateway_payments
+from stub_payment_gateway.models import GatewayPayment, GatewayPaymentStatus
+from stub_payment_gateway.services import mark_paid
 
 
 def make_role_user(username, role):
@@ -88,6 +93,7 @@ class SilverScreenServiceTests(TestCase):
         self.assertEqual(order.payment.status, PaymentStatus.UNPAID)
         self.assertTrue(order.payment.gateway_payment_id)
         self.assertTrue(order.payment.payment_url)
+        self.assertTrue(order.payment.va_account)
 
     def test_online_order_prevents_unavailable_seats(self):
         create_online_order(self.showtime.id, [self.seats[0].id], [])
@@ -162,6 +168,76 @@ class SilverScreenServiceTests(TestCase):
                     "status": "BOGUS",
                 }
             )
+
+    def test_callback_rejects_mismatched_va_account(self):
+        order = create_online_order(self.showtime.id, [self.seats[0].id], [])
+
+        with self.assertRaisesMessage(ValidationError, "Virtual account tidak cocok."):
+            apply_payment_callback(
+                {
+                    "internal_payment_id": order.payment.internal_payment_id,
+                    "gateway_payment_id": order.payment.gateway_payment_id,
+                    "va_account": "8808000099999999",
+                    "status": "PAID",
+                }
+            )
+
+    def test_issue_payment_endpoint_returns_va_and_expiration_info(self):
+        response = self.client.post(
+            reverse("stub_gateway:issue_payment"),
+            data=json.dumps(
+                {
+                    "payment_api_key": "mock-api-key",
+                    "amount": 125000,
+                    "expiration_in": 120,
+                    "internal_payment_id": "PAY-INT-9999",
+                }
+            ),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["expired_in"], 120)
+        self.assertTrue(payload["gateway_payment_id"])
+        self.assertTrue(payload["payment_url"])
+        self.assertTrue(payload["va_account"])
+        self.assertTrue(GatewayPayment.objects.filter(va_account=payload["va_account"]).exists())
+
+    def test_gateway_mark_paid_sends_application_callback_payload(self):
+        order = create_online_order(self.showtime.id, [self.seats[0].id], [])
+        gateway_payment = GatewayPayment.objects.get(gateway_payment_id=order.payment.gateway_payment_id)
+        paid_at = timezone.now()
+
+        with patch("stub_payment_gateway.services.send_application_callback") as sender:
+            mark_paid(gateway_payment.gateway_payment_id, paid_at=paid_at)
+
+        gateway_payment.refresh_from_db()
+        self.assertEqual(gateway_payment.status, GatewayPaymentStatus.PAID)
+        self.assertEqual(gateway_payment.paid_at, paid_at)
+        payload = sender.call_args.args[0]
+        self.assertEqual(payload["status"], "PAID")
+        self.assertEqual(payload["internal_payment_id"], order.payment.internal_payment_id)
+        self.assertEqual(payload["gateway_payment_id"], gateway_payment.gateway_payment_id)
+        self.assertEqual(payload["va_account"], gateway_payment.va_account)
+        self.assertEqual(payload["paid_at"], paid_at.isoformat())
+
+    def test_gateway_expiration_worker_expires_due_gateway_payment_and_sends_callback(self):
+        order = create_online_order(self.showtime.id, [self.seats[0].id], [])
+        gateway_payment = GatewayPayment.objects.get(gateway_payment_id=order.payment.gateway_payment_id)
+        now = timezone.now()
+        gateway_payment.expired_at = now - timedelta(seconds=1)
+        gateway_payment.save(update_fields=["expired_at"])
+        output = StringIO()
+
+        with patch("stub_payment_gateway.services.send_application_callback") as sender:
+            expired_count = expire_due_gateway_payments(output, now=now)
+
+        gateway_payment.refresh_from_db()
+        self.assertEqual(expired_count, 1)
+        self.assertEqual(gateway_payment.status, GatewayPaymentStatus.EXPIRED)
+        self.assertIn(f"EXPIRED {gateway_payment.gateway_payment_id}", output.getvalue())
+        self.assertEqual(sender.call_args.args[0]["status"], "EXPIRED")
 
     def test_unpaid_cancellation_sets_canceled_before_paid(self):
         order = create_online_order(self.showtime.id, [self.seats[0].id], [])
@@ -340,6 +416,43 @@ class SilverScreenServiceTests(TestCase):
         self.assertContains(response, "Sudah Diambil")
         self.assertNotContains(response, "legend-disabled")
         self.assertNotContains(response, "Nonaktif")
+
+    def test_payment_pages_show_unpaid_va_instruction_without_gateway_ids(self):
+        order = create_online_order(self.showtime.id, [self.seats[0].id], [])
+
+        for url in [
+            reverse("cinema:booking_payment", args=[order.number]),
+            reverse("cinema:order_detail", args=[order.number]),
+        ]:
+            response = self.client.get(url)
+            self.assertContains(response, "Transfer tepat sebesar")
+            self.assertContains(response, order.payment.va_account)
+            self.assertContains(response, "Sisa Waktu")
+            self.assertContains(response, "data-countdown")
+            self.assertNotContains(response, "Internal Payment")
+            self.assertNotContains(response, "Internal ID")
+            self.assertNotContains(response, "Gateway Payment")
+            self.assertNotContains(response, "Gateway ID")
+            self.assertNotContains(response, "Expired")
+
+    def test_final_payment_pages_hide_va_instruction_and_countdown(self):
+        order = create_online_order(self.showtime.id, [self.seats[0].id], [])
+        apply_payment_callback(
+            {
+                "internal_payment_id": order.payment.internal_payment_id,
+                "gateway_payment_id": order.payment.gateway_payment_id,
+                "status": "PAID",
+                "paid_at": timezone.now().isoformat(),
+            }
+        )
+        order.refresh_from_db()
+
+        response = self.client.get(reverse("cinema:order_detail", args=[order.number]))
+        self.assertContains(response, "Dibayar pada")
+        self.assertNotContains(response, "Transfer tepat sebesar")
+        self.assertNotContains(response, "Sisa Waktu")
+        self.assertNotContains(response, "data-countdown")
+        self.assertNotContains(response, "Expired")
 
     def test_htmx_messages_are_sent_in_trigger_header(self):
         response = self.client.post(
