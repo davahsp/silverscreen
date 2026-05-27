@@ -435,6 +435,34 @@ class AuthenticationTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertIn(reverse("cinema:login"), response.headers["Location"])
 
+    def test_navigation_marks_exact_customer_target_active(self):
+        customer = make_role_user("nav_customer", "customer")
+        self.client.force_login(customer)
+
+        response = self.client.get(reverse("cinema:movies"))
+
+        active_items = [item["label"] for item in response.context["navigation_items"] if item["active"]]
+        self.assertEqual(active_items, ["Pilih Film"])
+        self.assertEqual(response.context["navigation_items"][0]["url"], reverse("cinema:movies"))
+
+    def test_navigation_marks_parent_target_active_for_sub_view(self):
+        manager = make_role_user("nav_manager", "manager")
+        self.client.force_login(manager)
+
+        response = self.client.get(reverse("cinema:manager_movie_edit", args=[self.movie.id]))
+
+        active_items = [item["label"] for item in response.context["navigation_items"] if item["active"]]
+        self.assertEqual(active_items, ["Film"])
+
+    def test_navigation_exact_match_wins_over_parent_sub_match(self):
+        scheduler = make_role_user("nav_scheduler", "scheduler")
+        self.client.force_login(scheduler)
+
+        response = self.client.get(reverse("cinema:scheduler_showtime_new"))
+
+        active_items = [item["label"] for item in response.context["navigation_items"] if item["active"]]
+        self.assertEqual(active_items, ["Jadwalkan"])
+
     def test_login_redirects_customer_to_movies(self):
         make_role_user("alice", "customer")
         response = self.client.post(

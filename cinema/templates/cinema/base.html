@@ -40,22 +40,9 @@
       </nav>
     </header>
     <nav class="navbar">
-      {% if current_role == "customer" %}
-        <a class="nav-tab" href="{% url 'cinema:movies' %}">Pilih Film</a>
-        <a class="nav-tab" href="{% url 'cinema:orders' %}">Pesanan Saya</a>
-      {% elif current_role == "staff" %}
-        <a class="nav-tab" href="{% url 'cinema:counter_pos' %}">Counter POS</a>
-        <a class="nav-tab" href="{% url 'cinema:refund_queue' %}">Antrian Refund</a>
-        <a class="nav-tab" href="{% url 'cinema:order_lookup' %}">Cari Pesanan</a>
-      {% elif current_role == "scheduler" %}
-        <a class="nav-tab" href="{% url 'cinema:scheduler_showtimes' %}">Daftar Showtime</a>
-        <a class="nav-tab" href="{% url 'cinema:scheduler_showtime_new' %}">Jadwalkan</a>
-      {% elif current_role == "manager" %}
-        <a class="nav-tab" href="{% url 'cinema:manager_dashboard' %}">Dashboard</a>
-        <a class="nav-tab" href="{% url 'cinema:manager_movies' %}">Film</a>
-        <a class="nav-tab" href="{% url 'cinema:manager_products' %}">Produk</a>
-        <a class="nav-tab" href="{% url 'cinema:manager_studios' %}">Studio</a>
-      {% endif %}
+      {% for item in navigation_items %}
+        <a class="nav-tab{% if item.active %} active{% endif %}" href="{{ item.url }}">{{ item.label }}</a>
+      {% endfor %}
     </nav>
     <main class="main">
       <div class="main-inner">

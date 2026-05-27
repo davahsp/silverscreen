@@ -65,6 +65,7 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 'cinema.context_processors.toast_messages',
+                'cinema.context_processors.navigation',
             ],
         },
     },

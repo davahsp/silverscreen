@@ -30,6 +30,7 @@ from .models import (
     Studio,
     TicketStatus,
 )
+from .navigation import ROLE_LABELS, default_url_for_role, user_role
 from .services.booking import (
     SERVICE_CHARGE_PRICE,
     calculate_total,
@@ -42,21 +43,6 @@ from .services.cancellation import cancel_order, print_order_tickets
 from .services.payments import apply_payment_callback
 from .services.scheduling import disable_showtime
 from .services.studios import save_studio_layout
-
-
-ROLE_LABELS = {
-    "customer": "Pelanggan",
-    "staff": "Staff Counter",
-    "scheduler": "Penjadwal",
-    "manager": "Manajer",
-}
-
-ROLE_DEFAULT_URLS = {
-    "customer": "cinema:movies",
-    "staff": "cinema:counter_pos",
-    "scheduler": "cinema:scheduler_showtimes",
-    "manager": "cinema:manager_dashboard",
-}
 
 
 def booking_window_dates():
@@ -79,29 +65,8 @@ def parse_booking_date(value, allowed_dates):
     return selected_date if selected_date in allowed_dates else None
 
 
-def user_role(user):
-    if not user or not user.is_authenticated:
-        return None
-    cached = getattr(user, "_ss_role", None)
-    if cached is not None:
-        return cached
-    if user.is_superuser:
-        role = "manager"
-    else:
-        role = next(
-            (name for name in user.groups.values_list("name", flat=True) if name in ROLE_LABELS),
-            None,
-        )
-    user._ss_role = role
-    return role
-
-
 def selected_role(request):
     return user_role(getattr(request, "user", None))
-
-
-def default_url_for_role(role):
-    return ROLE_DEFAULT_URLS.get(role, "cinema:movies")
 
 
 def _enforce_role(request, required_role):
