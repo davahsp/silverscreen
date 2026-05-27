@@ -81,6 +81,12 @@ def _enforce_role(request, required_role):
     return None
 
 
+class IndexView(View):
+    def get(self, request, *args, **kwargs):
+        role = user_role(request.user)
+        return redirect(default_url_for_role(role))
+
+
 class RoleMixin:
     required_role = None
 

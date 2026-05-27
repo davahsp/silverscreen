@@ -215,7 +215,8 @@ Seat protection is enforced with a conditional unique constraint so a showtime/s
 
 Customer:
 
-- `/`
+- `/` (role-based redirect)
+- `/movies/`
 - `/movies/<id>/`
 - `/booking/<showtime_id>/`
 - `/booking/<showtime_id>/addons/`

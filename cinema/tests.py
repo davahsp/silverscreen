@@ -730,6 +730,29 @@ class AuthenticationTests(TestCase):
         self.assertContains(response, "Masuk")
         self.assertContains(response, "Daftar")
 
+    def test_movies_route_uses_movies_path(self):
+        self.assertEqual(reverse("cinema:movies"), "/movies/")
+
+    def test_index_redirects_anonymous_user_to_movies(self):
+        response = self.client.get(reverse("cinema:index"))
+
+        self.assertRedirects(response, reverse("cinema:movies"))
+
+    def test_index_redirects_authenticated_roles_to_default_pages(self):
+        cases = [
+            ("customer", "cinema:movies"),
+            ("staff", "cinema:counter_pos"),
+            ("scheduler", "cinema:scheduler_showtimes"),
+            ("manager", "cinema:manager_dashboard"),
+        ]
+
+        for role, target in cases:
+            with self.subTest(role=role):
+                self.client.force_login(make_role_user(f"index_{role}", role))
+                response = self.client.get(reverse("cinema:index"))
+                self.assertRedirects(response, reverse(target), fetch_redirect_response=False)
+                self.client.logout()
+
     def test_movie_detail_is_public(self):
         response = self.client.get(reverse("cinema:movie_detail", args=[self.movie.id]))
         self.assertEqual(response.status_code, 200)
@@ -748,6 +771,7 @@ class AuthenticationTests(TestCase):
         active_items = [item["label"] for item in response.context["navigation_items"] if item["active"]]
         self.assertEqual(active_items, ["Pilih Film"])
         self.assertEqual(response.context["navigation_items"][0]["url"], reverse("cinema:movies"))
+        self.assertContains(response, f'class="topbar-logo" href="{reverse("cinema:index")}"')
 
     def test_navigation_marks_parent_target_active_for_sub_view(self):
         manager = make_role_user("nav_manager", "manager")
