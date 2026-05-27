@@ -158,7 +158,22 @@ td { padding:12px 14px; border-bottom:1px solid var(--border-lt); vertical-align
 .stepper-step.active .stepper-circle { border-color:var(--red); color:var(--red); box-shadow:0 0 0 3px rgba(159,29,46,.12); }
 .stepper-step.active .stepper-label { color:var(--text-1); }
 .stepper-line.completed { background:var(--red); }
-.pos-layout { display:grid; grid-template-columns:1fr 360px; gap:20px; }
+.pos-form { padding-bottom:76px; }
+.pos-order-area[hidden] { display:none; }
+.pos-showtime-carousel { display:flex; gap:12px; overflow-x:auto; scroll-snap-type:x proximity; padding:2px 2px 10px; }
+.pos-showtime-card { flex:0 0 240px; scroll-snap-align:start; cursor:pointer; }
+.pos-showtime-input { position:absolute; opacity:0; pointer-events:none; }
+.pos-showtime-tile { min-height:112px; display:flex; flex-direction:column; justify-content:space-between; gap:8px; padding:14px; border:1.5px solid var(--border); border-radius:var(--r-sm); background:#fff; box-shadow:var(--sh-sm); transition:border-color .16s ease, box-shadow .16s ease, transform .16s ease; }
+.pos-showtime-tile strong { line-height:1.25; overflow-wrap:anywhere; }
+.pos-showtime-tile span { color:var(--text-2); font-size:12.5px; font-weight:800; }
+.pos-showtime-card:hover .pos-showtime-tile, .pos-showtime-input:focus-visible + .pos-showtime-tile { border-color:var(--red-border); box-shadow:0 8px 20px rgba(31,28,24,.10); transform:translateY(-2px); }
+.pos-showtime-input:checked + .pos-showtime-tile { border-color:var(--red); background:var(--red-light); box-shadow:0 0 0 3px rgba(159,29,46,.10); }
+.pos-layout { display:grid; grid-template-columns:minmax(0,1fr) 380px; gap:20px; align-items:start; }
+.pos-seat-map { min-width:0; position:sticky; top:16px; }
+.pos-summary-card { position:sticky; top:16px; }
+.pos-addon-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:12px; }
+.pos-submit-bar { position:fixed; left:0; right:0; bottom:0; z-index:30; padding:12px 24px; border-top:1px solid var(--border-lt); background:rgba(255,255,255,.96); box-shadow:0 -8px 22px rgba(31,28,24,.10); }
+.pos-submit-bar .button { width:min(1200px, 100%); margin:0 auto; }
 .ticket-card { max-width:520px; border-radius:18px; background:#fff; border:1px solid var(--border-lt); overflow:hidden; box-shadow:var(--sh-sm); }
 .ticket-card-header { background:#1a1410; color:#fff; padding:20px; display:flex; align-items:flex-end; justify-content:space-between; gap:16px; }
 .ticket-card-header .status-badge { flex:0 0 auto; align-self:flex-end; margin-bottom:1px; border:1px solid rgba(255,255,255,.16); }
@@ -210,6 +225,11 @@ td { padding:12px 14px; border-bottom:1px solid var(--border-lt); vertical-align
   .nav-tab { flex:1; justify-content:center; font-size:11px; border-bottom:0; border-top:2px solid transparent; }
   .nav-tab.active { border-top-color:var(--red); }
   .grid-2,.grid-3,.grid-4,.pos-layout,.stats-grid { grid-template-columns:1fr; }
+  .pos-showtime-card { flex-basis:220px; }
+  .pos-seat-map { position:static; }
+  .pos-summary-card { position:static; }
+  .pos-form { padding-bottom:136px; }
+  .pos-submit-bar { bottom:60px; padding:12px 16px; }
   .ticket-detail-grid { grid-template-columns:1fr; }
   .ticket-qr { justify-content:flex-start; }
   .ticket-qr img { width:124px; height:124px; }

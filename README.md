@@ -268,6 +268,7 @@ The UI follows `silverscreen-claude-design/`:
 - Movie detail jam tayang is paginated by date across the shared 14-day booking window; the date filter stays statically rendered and HTMX uses `hx-include` to refresh only the list area
 - Mobile bottom navigation behavior
 - Cards, tables, forms, status badges, seat grid with state legend, POS layout, ticket preview, and gateway page styling
+- Staff POS starts with an unselected horizontal showtime carousel. Choosing a showtime fetches only the seat-map form partial with HTMX; seat selection is capped by `Order.MAX_TICKETS`, the summary stays on the right, add-ons sit below the seat/summary area, and the submit action stays fixed at the viewport bottom.
 - Booking summary cards update ticket/add-on quantities, unit prices, subtotals, and grand totals before review
 
 CSS files:
@@ -358,6 +359,7 @@ Current test coverage includes:
 - QR UUID assignment for confirmed tickets
 - Printing tickets without changing ticket status
 - Atomic onsite order creation
+- POS showtime carousel starts unselected, HTMX showtime changes return only the seat-map partial, and POS seat selection uses the `Order.MAX_TICKETS` cap
 - Showtime derived `end_at`
 - Showtime disable blocking
 - Studio capacity derivation

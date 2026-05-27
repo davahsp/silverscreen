@@ -1,0 +1,28 @@
+{% load cinema_tags %}
+{% if showtime %}
+  <div class="card">
+    <div class="card-header">Pilih Kursi - {{ showtime.movie.title }}</div>
+    <div class="card-body">
+      <div class="seat-screen">Layar</div>
+      <div class="seat-grid">
+        {% for seat in seats %}
+          {% with occupied=occupancy|seat_status:seat.id %}
+            <label class="seat-choice">
+              <input type="checkbox" name="seats" value="{{ seat.id }}" {% if occupied or not seat.is_active %}disabled{% else %}data-seat-selectable{% endif %}>
+              <span class="seat {% if occupied %}unavailable{% elif not seat.is_active %}disabled{% endif %}">{{ seat.number }}</span>
+            </label>
+          {% endwith %}
+        {% empty %}
+          <p class="text-muted">Studio belum memiliki kursi aktif.</p>
+        {% endfor %}
+      </div>
+      <div class="seat-legend">
+        <span class="seat-legend-item legend-available">Tersedia</span>
+        <span class="seat-legend-item legend-selected">Dipilih</span>
+        <span class="seat-legend-item legend-taken">Sudah Diambil</span>
+      </div>
+    </div>
+  </div>
+{% else %}
+  <div class="empty-state">Pilih showtime untuk memuat peta kursi.</div>
+{% endif %}

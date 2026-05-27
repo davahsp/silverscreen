@@ -446,6 +446,12 @@ class PaymentCallbackView(View):
 class CounterPOSView(RoleMixin, TemplateView):
     required_role = "staff"
     template_name = "cinema/staff_pos.html"
+    htmx_template_name = "cinema/partials/staff_pos_seat_map.html"
+
+    def get_template_names(self):
+        if self.request.headers.get("HX-Request") == "true":
+            return [self.htmx_template_name]
+        return super().get_template_names()
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -464,6 +470,7 @@ class CounterPOSView(RoleMixin, TemplateView):
                 "seats": seats,
                 "products": Product.objects.filter(is_active=True),
                 "occupancy": occupancy,
+                "max_ticket_quantity": Order.MAX_TICKETS,
             }
         )
         return context

@@ -308,6 +308,46 @@ class SilverScreenServiceTests(TestCase):
         self.assertEqual(ticket.status, TicketStatus.CONFIRMED)
         self.assertIsNotNone(ticket.qr_identifier)
 
+    def test_pos_initial_page_has_unselected_showtime_carousel_without_seat_map(self):
+        staff = make_role_user("counter_staff", "staff")
+        self.client.force_login(staff)
+
+        response = self.client.get(reverse("cinema:counter_pos"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["max_ticket_quantity"], Order.MAX_TICKETS)
+        self.assertContains(response, 'data-showtime-carousel')
+        self.assertContains(response, 'data-showtime-input')
+        self.assertContains(response, 'type="radio"')
+        self.assertContains(response, f"const maxSeats = {Order.MAX_TICKETS};")
+        self.assertContains(
+            response,
+            f"Anda hanya bisa membeli maksimal {Order.MAX_TICKETS} tiket dalam satu pesanan",
+        )
+        self.assertNotContains(response, "<select")
+        self.assertNotContains(response, " checked")
+        self.assertContains(response, 'data-pos-order-area hidden')
+        self.assertContains(response, self.product.name)
+        self.assertNotContains(response, f"Pilih Kursi - {self.movie.title}")
+
+    def test_pos_htmx_showtime_change_returns_only_seat_map_partial(self):
+        staff = make_role_user("counter_staff_htmx", "staff")
+        self.client.force_login(staff)
+
+        response = self.client.get(
+            reverse("cinema:counter_pos"),
+            {"showtime": self.showtime.id},
+            headers={"HX-Request": "true"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, f"Pilih Kursi - {self.movie.title}")
+        self.assertContains(response, self.seats[0].number)
+        self.assertContains(response, "data-seat-selectable")
+        self.assertContains(response, "Sudah Diambil")
+        self.assertNotContains(response, "<!doctype html>")
+        self.assertNotContains(response, "Add-ons")
+
     def test_print_order_tickets_does_not_change_ticket_status_or_qr_identifier(self):
         order = create_onsite_order(self.showtime.id, [self.seats[0].id], [])
         ticket = order.tickets.get()
