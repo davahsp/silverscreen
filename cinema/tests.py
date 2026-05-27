@@ -18,7 +18,7 @@ from cinema.models import (
     Movie,
     MovieTheme,
     Order,
-    OrderSource,
+    OrderChannel,
     OrderStatus,
     PaymentStatus,
     Product,
@@ -87,7 +87,7 @@ class SilverScreenServiceTests(TestCase):
     def test_online_order_creation_holds_seats_and_creates_unpaid_payment(self):
         order = create_online_order(self.showtime.id, [self.seats[0].id], [(self.product.id, 2)])
 
-        self.assertEqual(order.source, OrderSource.ONLINE)
+        self.assertEqual(order.channel, OrderChannel.ONLINE)
         self.assertEqual(order.status, OrderStatus.PENDING)
         self.assertEqual(order.tickets.get().status, TicketStatus.HELD)
         self.assertEqual(order.payment.status, PaymentStatus.UNPAID)
@@ -292,7 +292,7 @@ class SilverScreenServiceTests(TestCase):
     def test_onsite_order_is_confirmed_paid_and_printed_without_pending(self):
         order = create_onsite_order(self.showtime.id, [self.seats[0].id], [(self.product.id, 1)])
 
-        self.assertEqual(order.source, OrderSource.ONSITE)
+        self.assertEqual(order.channel, OrderChannel.ONSITE)
         self.assertEqual(order.status, OrderStatus.CONFIRMED)
         self.assertEqual(order.payment.status, PaymentStatus.PAID)
         ticket = order.tickets.get()
@@ -452,6 +452,24 @@ class SilverScreenServiceTests(TestCase):
             self.assertNotContains(response, "Gateway Payment")
             self.assertNotContains(response, "Gateway ID")
             self.assertNotContains(response, "Expired")
+
+    def test_order_list_cards_link_to_order_detail_and_show_movie_summary(self):
+        self.movie.main_picture = "/static/posters/ruang-sunyi.jpg"
+        self.movie.save(update_fields=["main_picture"])
+        order = create_online_order(self.showtime.id, [self.seats[0].id, self.seats[1].id], [])
+
+        response = self.client.get(reverse("cinema:orders"))
+
+        detail_url = reverse("cinema:order_detail", args=[order.number])
+        self.assertContains(response, "Metode Pemesanan")
+        self.assertNotContains(response, "Sumber")
+        self.assertNotContains(response, ">Detail<")
+        self.assertContains(response, f'class="order-list-card" href="{detail_url}"')
+        self.assertContains(response, self.movie.main_picture)
+        self.assertContains(response, self.movie.title)
+        self.assertContains(response, "2 tiket")
+        self.assertContains(response, timezone.localtime(self.showtime.start_at).strftime("%H:%M"))
+        self.assertContains(response, order.get_channel_display())
 
     def test_final_payment_pages_hide_va_instruction_and_countdown(self):
         order = create_online_order(self.showtime.id, [self.seats[0].id], [])

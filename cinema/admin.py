@@ -35,8 +35,8 @@ class ShowTimeAdmin(admin.ModelAdmin):
 
 @admin.register(Order)
 class OrderAdmin(admin.ModelAdmin):
-    list_display = ("number", "source", "status", "total_amount", "created_at")
-    list_filter = ("source", "status")
+    list_display = ("number", "channel", "status", "total_amount", "created_at")
+    list_filter = ("channel", "status")
 
 
 @admin.register(Payment)

@@ -5,7 +5,7 @@
 <div class="page-header">
   <div>
     <h1 class="page-title">{{ order.number }}</h1>
-    <p class="page-subtitle">{{ order.created_at|date:"d M Y H:i" }} · {{ order.source }}</p>
+    <p class="page-subtitle">{{ order.created_at|date:"d M Y H:i" }} · {{ order.get_channel_display }}</p>
   </div>
   <div>
     {% include "cinema/partials/status_badge.html" with status=order.status label=order.get_status_display %}

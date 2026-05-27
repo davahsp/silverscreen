@@ -6,7 +6,7 @@ from cinema.models import (
     Order,
     OrderAddon,
     OrderCharge,
-    OrderSource,
+    OrderChannel,
     OrderStatus,
     Payment,
     PaymentStatus,
@@ -82,7 +82,7 @@ def create_online_order(showtime_id, seat_ids, addons):
 
     order = Order.objects.create(
         number=next_order_number(Order),
-        source=OrderSource.ONLINE,
+        channel=OrderChannel.ONLINE,
         status=OrderStatus.PENDING,
         total_amount=total,
     )
@@ -130,7 +130,7 @@ def create_onsite_order(showtime_id, seat_ids, addons):
 
     order = Order.objects.create(
         number=next_order_number(Order),
-        source=OrderSource.ONSITE,
+        channel=OrderChannel.ONSITE,
         status=OrderStatus.CONFIRMED,
         total_amount=total,
     )

@@ -32,7 +32,7 @@ The booking draft is stored in the session until the customer confirms the revie
 
 On order creation, the system creates:
 
-- `Order` with `source=ONLINE` and `status=PENDING`
+- `Order` with `channel=ONLINE` and `status=PENDING`
 - `Ticket` records with `status=HELD`
 - `Payment` with `status=UNPAID`
 - optional `OrderAddon` records
@@ -92,7 +92,7 @@ Onsite/counter orders do not create pending records.
 
 The staff POS flow creates records only after the customer pays. The `Buat & Cetak Tiket` action atomically creates:
 
-- `Order` with `source=ONSITE` and `status=CONFIRMED`
+- `Order` with `channel=ONSITE` and `status=CONFIRMED`
 - `Payment` with `status=PAID`
 - `Ticket` records with `status=PRINTED`
 - `printed_at`
@@ -193,7 +193,7 @@ Important enums:
 
 - `AgeRating`: `ALL_AGE`, `R7`, `R13`, `R17`, `R21`
 - `ProductCategory`: `FOOD`, `DRINK`, `COMBO`, `MERCHANDISE`, `OTHER`
-- `OrderSource`: `ONLINE`, `ONSITE`
+- `OrderChannel`: `ONLINE`, `ONSITE`
 - `OrderStatus`: `PENDING`, `CONFIRMED`, `EXPIRED`, `CANCELED`
 - `TicketStatus`: `HELD`, `CONFIRMED`, `EXPIRED`, `CANCELED`, `PRINTED`
 - `PaymentStatus`: `UNPAID`, `PAID`, `EXPIRED`, `REFUND_PENDING`, `REFUNDED`, `CANCELED_BEFORE_PAID`
@@ -330,6 +330,7 @@ python -m django test --settings=silverscreen.settings
 Current test coverage includes:
 
 - Online order creation
+- Customer order list renders full-width linked order cards with `Metode Pemesanan`, movie poster, ticket count, and showtime start
 - Held ticket creation
 - Unpaid payment creation
 - Gateway VA assignment and issue-payment response data

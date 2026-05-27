@@ -20,7 +20,7 @@ class ProductCategory(models.TextChoices):
     OTHER = "OTHER", "Other"
 
 
-class OrderSource(models.TextChoices):
+class OrderChannel(models.TextChoices):
     ONLINE = "ONLINE", "Online"
     ONSITE = "ONSITE", "Onsite"
 
@@ -172,7 +172,7 @@ class Order(models.Model):
     MAX_TICKETS = 10
 
     number = models.CharField(max_length=32, unique=True)
-    source = models.CharField(max_length=10, choices=OrderSource.choices)
+    channel = models.CharField(max_length=10, choices=OrderChannel.choices)
     status = models.CharField(max_length=20, choices=OrderStatus.choices)
     total_amount = models.PositiveIntegerField(default=0)
     created_at = models.DateTimeField(default=timezone.now)
