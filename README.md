@@ -336,7 +336,7 @@ Current test coverage includes:
 - Login required for booking
 - Role-aware login redirect (customer/staff/scheduler/manager)
 - Cross-role access is redirected to the user's home
-- Customer self-signup creates a user in the `customer` group and auto-logs in
+- Customer self-signup creates a user in the `customer` group and redirects to the login page
 - Logout returns to the login page
 
 ## Current Limitations

@@ -417,7 +417,7 @@ class AuthenticationTests(TestCase):
         response = self.client.get(reverse("cinema:manager_dashboard"))
         self.assertRedirects(response, reverse("cinema:movies"))
 
-    def test_signup_creates_customer_user_and_logs_in(self):
+    def test_signup_creates_customer_user_and_redirects_to_login(self):
         response = self.client.post(
             reverse("cinema:register"),
             {
@@ -427,9 +427,10 @@ class AuthenticationTests(TestCase):
                 "password2": "Sup3rSecret!",
             },
         )
-        self.assertRedirects(response, reverse("cinema:movies"))
+        self.assertRedirects(response, reverse("cinema:login"))
         user = User.objects.get(username="newuser")
         self.assertTrue(user.groups.filter(name="customer").exists())
+        self.assertNotIn("_auth_user_id", self.client.session)
 
     def test_logout_redirects_to_login(self):
         user = make_role_user("c2", "customer")

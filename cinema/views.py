@@ -2,10 +2,10 @@ import json
 from datetime import datetime, timedelta
 
 from django.contrib import messages
-from django.contrib.auth import login as auth_login
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.models import Group
 from django.contrib.auth.views import LoginView, LogoutView, redirect_to_login
+from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db.models import Exists, OuterRef
 from django.http import JsonResponse
@@ -175,9 +175,8 @@ class CustomerSignupView(FormView):
         user = form.save()
         customer_group, _ = Group.objects.get_or_create(name="customer")
         user.groups.add(customer_group)
-        auth_login(self.request, user)
-        messages.success(self.request, "Akun pelanggan dibuat. Selamat datang!")
-        return redirect(default_url_for_role("customer"))
+        messages.success(self.request, "Akun pelanggan dibuat. Silakan masuk.")
+        return redirect(settings.LOGIN_URL)
 
 
 class MovieListView(RoleMixin, ListView):
