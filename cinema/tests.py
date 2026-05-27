@@ -49,6 +49,8 @@ def make_role_user(username, role):
 class SilverScreenServiceTests(TestCase):
     def setUp(self):
         self.customer = make_role_user("customer1", "customer")
+        self.customer.email = "customer1@example.com"
+        self.customer.save(update_fields=["email"])
         self.client.force_login(self.customer)
         theme = MovieTheme.objects.create(name="Drama")
         self.movie = Movie.objects.create(
@@ -304,6 +306,7 @@ class SilverScreenServiceTests(TestCase):
         self.assertEqual(order.channel, OrderChannel.ONSITE)
         self.assertEqual(order.status, OrderStatus.CONFIRMED)
         self.assertEqual(order.payment.status, PaymentStatus.PAID)
+        self.assertIsNone(order.customer)
         ticket = order.tickets.get()
         self.assertEqual(ticket.status, TicketStatus.CONFIRMED)
         self.assertIsNotNone(ticket.qr_identifier)
@@ -319,12 +322,25 @@ class SilverScreenServiceTests(TestCase):
         self.assertContains(response, 'data-showtime-carousel')
         self.assertContains(response, 'data-showtime-input')
         self.assertContains(response, 'type="radio"')
+        self.assertContains(response, "Pelanggan (opsional)")
+        self.assertContains(response, "Walk-in / tanpa akun")
+        self.assertContains(response, "role=\"combobox\"")
+        self.assertContains(response, "data-customer-search")
+        self.assertContains(response, "data-customer-value")
+        self.assertContains(response, "data-customer-dropdown")
+        self.assertContains(response, "data-customer-option")
+        self.assertContains(response, "data-customer-label")
+        self.assertContains(response, "pos-customer-options")
+        self.assertContains(response, self.customer.username)
+        self.assertContains(response, self.customer.email)
         self.assertContains(response, f"const maxSeats = {Order.MAX_TICKETS};")
         self.assertContains(
             response,
             f"Anda hanya bisa membeli maksimal {Order.MAX_TICKETS} tiket dalam satu pesanan",
         )
-        self.assertNotContains(response, "<select")
+        self.assertNotContains(response, '<select id="pos-showtime"')
+        self.assertNotContains(response, '<select id="pos-customer"')
+        self.assertNotContains(response, "<datalist")
         self.assertNotContains(response, " checked")
         self.assertContains(response, 'data-pos-order-area hidden')
         self.assertContains(response, self.product.name)
@@ -347,6 +363,23 @@ class SilverScreenServiceTests(TestCase):
         self.assertContains(response, "Sudah Diambil")
         self.assertNotContains(response, "<!doctype html>")
         self.assertNotContains(response, "Add-ons")
+
+    def test_pos_can_assign_optional_customer_to_onsite_order(self):
+        staff = make_role_user("counter_staff_customer", "staff")
+        self.client.force_login(staff)
+
+        response = self.client.post(
+            reverse("cinema:counter_pos"),
+            {
+                "showtime": self.showtime.id,
+                "customer": self.customer.id,
+                "seats": [self.seats[0].id],
+            },
+        )
+
+        order = Order.objects.get(channel=OrderChannel.ONSITE)
+        self.assertRedirects(response, reverse("cinema:order_detail", args=[order.number]))
+        self.assertEqual(order.customer, self.customer)
 
     def test_print_order_tickets_does_not_change_ticket_status_or_qr_identifier(self):
         order = create_onsite_order(self.showtime.id, [self.seats[0].id], [])

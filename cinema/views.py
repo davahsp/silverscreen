@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.contrib.auth.models import Group
+from django.contrib.auth.models import Group, User
 from django.contrib.auth.views import LoginView, LogoutView, redirect_to_login
 from django.conf import settings
 from django.core.exceptions import ValidationError
@@ -485,6 +485,11 @@ class CounterPOSView(RoleMixin, TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         showtime_id = self.request.GET.get("showtime") or self.request.POST.get("showtime")
+        selected_customer_id = self.request.POST.get("customer") or self.request.GET.get("customer")
+        customers = User.objects.filter(groups__name="customer").order_by("username").distinct()
+        selected_customer = None
+        if selected_customer_id and selected_customer_id.isdigit():
+            selected_customer = customers.filter(pk=int(selected_customer_id)).first()
         showtime = None
         seats = []
         occupancy = {}
@@ -498,17 +503,38 @@ class CounterPOSView(RoleMixin, TemplateView):
                 "showtime": showtime,
                 "seats": seats,
                 "products": Product.objects.filter(is_active=True),
+                "customers": customers,
+                "selected_customer": selected_customer,
+                "selected_customer_id": int(selected_customer_id) if selected_customer_id and selected_customer_id.isdigit() else None,
                 "occupancy": occupancy,
                 "max_ticket_quantity": Order.MAX_TICKETS,
             }
         )
         return context
 
+    def get_selected_customer(self):
+        raw_customer_id = self.request.POST.get("customer", "")
+        if not raw_customer_id:
+            return None
+        try:
+            customer_id = int(raw_customer_id)
+        except ValueError as exc:
+            raise ValidationError("Customer tidak valid.") from exc
+        customer = User.objects.filter(pk=customer_id, groups__name="customer").first()
+        if customer is None:
+            raise ValidationError("Customer tidak valid.")
+        return customer
+
     def post(self, request, *args, **kwargs):
         try:
             showtime_id = int(request.POST["showtime"])
             seat_ids = [int(value) for value in request.POST.getlist("seats")]
-            order = create_onsite_order(showtime_id, seat_ids, parse_addons(request.POST))
+            order = create_onsite_order(
+                showtime_id,
+                seat_ids,
+                parse_addons(request.POST),
+                customer=self.get_selected_customer(),
+            )
         except (KeyError, ValueError, ValidationError) as exc:
             messages.error(request, "; ".join(exc.messages) if hasattr(exc, "messages") else str(exc))
             return self.get(request, *args, **kwargs)

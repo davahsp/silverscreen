@@ -124,7 +124,7 @@ def create_online_order(showtime_id, seat_ids, addons, customer=None):
 
 
 @transaction.atomic
-def create_onsite_order(showtime_id, seat_ids, addons):
+def create_onsite_order(showtime_id, seat_ids, addons, customer=None):
     showtime = ShowTime.objects.select_for_update().select_related("movie", "studio").get(id=showtime_id)
     if not showtime.is_active or not showtime.movie.is_active or not showtime.studio.is_active:
         raise ValidationError("Showtime tidak tersedia untuk penjualan counter.")
@@ -132,6 +132,7 @@ def create_onsite_order(showtime_id, seat_ids, addons):
     total = calculate_total(showtime, seats, addons) - SERVICE_CHARGE_PRICE
 
     order = Order.objects.create(
+        customer=customer,
         number=next_order_number(Order),
         channel=OrderChannel.ONSITE,
         status=OrderStatus.CONFIRMED,

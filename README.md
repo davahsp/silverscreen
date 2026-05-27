@@ -92,13 +92,15 @@ Onsite/counter orders do not create pending records.
 
 The staff POS flow creates records only after the customer pays. The `Buat Order & Buka Tiket` action atomically creates:
 
-- `Order` with `channel=ONSITE` and `status=CONFIRMED`
+- `Order` with optional customer assignment, `channel=ONSITE`, and `status=CONFIRMED`
 - `Payment` with `status=PAID`
 - `Ticket` records with `status=CONFIRMED`
 - a unique QR UUID for each ticket
 - add-ons and charges
 
 No onsite `PENDING` or `HELD` lifecycle is used.
+
+The POS customer selector is optional and searchable by username or email. Staff can attach an onsite order to an existing customer account, including one the customer just registered from their own device, or leave it as walk-in/no account.
 
 Printing tickets is not a status transition. It only creates a physical copy of the digital ticket; ticket status remains `CONFIRMED`.
 
@@ -270,6 +272,7 @@ The UI follows `silverscreen-claude-design/`:
 - Mobile bottom navigation behavior
 - Cards, tables, forms, status badges, seat grid with state legend, POS layout, ticket preview, and gateway page styling
 - Staff POS starts with an unselected horizontal showtime carousel. Choosing a showtime fetches only the seat-map form partial with HTMX; seat selection is capped by `Order.MAX_TICKETS`, the summary stays on the right, add-ons sit below the seat/summary area, and the submit action stays fixed at the viewport bottom.
+- Staff POS includes an optional searchable customer selector so onsite orders can be attached to a customer account or left as walk-in orders.
 - The shared order list endpoint at `/orders/` uses one view and template for customer `Pesanan Saya` and staff `Daftar Pesanan`; customers see only orders assigned to their account, while staff see all orders. `/staff/orders/` redirects to this shared endpoint.
 - Booking summary cards update ticket/add-on quantities, unit prices, subtotals, and grand totals before review
 
@@ -362,6 +365,7 @@ Current test coverage includes:
 - QR UUID assignment for confirmed tickets
 - Printing tickets without changing ticket status
 - Atomic onsite order creation
+- Optional customer assignment for onsite POS orders
 - POS showtime carousel starts unselected, HTMX showtime changes return only the seat-map partial, and POS seat selection uses the `Order.MAX_TICKETS` cap
 - Staff order list uses the shared `/orders/` endpoint and renders all orders as linked order cards
 - Showtime derived `end_at`

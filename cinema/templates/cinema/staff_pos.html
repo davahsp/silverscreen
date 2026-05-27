@@ -14,6 +14,40 @@
   <div class="card mb-4">
     <div class="card-header">Showtime</div>
     <div class="card-body">
+      <div class="form-group pos-customer-combobox" data-customer-combobox>
+        <label class="form-label" for="pos-customer">Pelanggan (opsional)</label>
+        <input
+          id="pos-customer"
+          type="text"
+          placeholder="Walk-in / tanpa akun"
+          autocomplete="off"
+          role="combobox"
+          aria-expanded="false"
+          aria-controls="pos-customer-options"
+          data-customer-search
+          value="{% if selected_customer %}{{ selected_customer.get_username }}{% if selected_customer.email %} - {{ selected_customer.email }}{% endif %}{% endif %}"
+        >
+        <input type="hidden" name="customer" data-customer-value value="{{ selected_customer_id|default:'' }}">
+        <div class="form-help form-help-warning">
+          Tanyakan apakah pelanggan sudah memiliki akun. Jika ada, pilih akunnya. Jika belum, tawarkan untuk daftar terlebih dahulu lalu pilih akun baru. Jika pelanggan menolak atau terburu-buru, kosongkan sebagai walk-in.
+        </div>
+        <div class="pos-customer-dropdown" id="pos-customer-options" role="listbox" data-customer-dropdown hidden>
+          {% for customer in customers %}
+            <button
+              class="pos-customer-option"
+              type="button"
+              role="option"
+              data-customer-option
+              data-customer-id="{{ customer.id }}"
+              data-customer-label="{{ customer.get_username }}{% if customer.email %} - {{ customer.email }}{% endif %}"
+            >
+              <strong>{{ customer.get_username }}</strong>
+              {% if customer.email %}<span>{{ customer.email }}</span>{% endif %}
+            </button>
+          {% endfor %}
+          <div class="pos-customer-empty" data-customer-empty hidden>Tidak ada customer cocok.</div>
+        </div>
+      </div>
       <div class="pos-showtime-carousel" data-showtime-carousel>
         {% for item in showtimes %}
           <label class="pos-showtime-card">
@@ -110,6 +144,12 @@
 <script>
   (() => {
     const form = document.querySelector("[data-pos-form]");
+    const customerCombobox = document.querySelector("[data-customer-combobox]");
+    const customerSearch = document.querySelector("[data-customer-search]");
+    const customerValue = document.querySelector("[data-customer-value]");
+    const customerDropdown = document.querySelector("[data-customer-dropdown]");
+    const customerOptions = Array.from(document.querySelectorAll("[data-customer-option]"));
+    const customerEmpty = document.querySelector("[data-customer-empty]");
     const showtimeInputs = Array.from(document.querySelectorAll("[data-showtime-input]"));
     const orderArea = document.querySelector("[data-pos-order-area]");
     const summaryLines = document.querySelector("[data-pos-summary-lines]");
@@ -120,6 +160,34 @@
     const formatRupiah = (value) => `Rp${Number(value || 0).toLocaleString("id-ID")}`;
 
     if (!form || !orderArea || !summaryLines || !grandTotal || !submitButton) return;
+
+    const setCustomerDropdownOpen = (open) => {
+      if (!customerSearch || !customerDropdown) return;
+      customerDropdown.hidden = !open;
+      customerSearch.setAttribute("aria-expanded", open ? "true" : "false");
+    };
+
+    const filterCustomerOptions = () => {
+      if (!customerSearch || !customerValue) return;
+      const query = customerSearch.value.trim().toLowerCase();
+      const exact = customerOptions.find((option) => option.dataset.customerLabel === customerSearch.value);
+      customerValue.value = exact ? exact.dataset.customerId : "";
+      let visibleCount = 0;
+      customerOptions.forEach((option) => {
+        const visible = !query || option.dataset.customerLabel.toLowerCase().includes(query);
+        option.hidden = !visible;
+        if (visible) visibleCount += 1;
+      });
+      if (customerEmpty) customerEmpty.hidden = visibleCount > 0;
+    };
+
+    const selectCustomer = (option) => {
+      if (!customerSearch || !customerValue) return;
+      customerSearch.value = option.dataset.customerLabel;
+      customerValue.value = option.dataset.customerId;
+      filterCustomerOptions();
+      setCustomerDropdownOpen(false);
+    };
 
     const showLimitToast = () => {
       document.body.dispatchEvent(
@@ -186,11 +254,27 @@
       event.preventDefault();
       showLimitToast();
     });
+    customerSearch?.addEventListener("focus", () => {
+      filterCustomerOptions();
+      setCustomerDropdownOpen(true);
+    });
+    customerSearch?.addEventListener("input", () => {
+      filterCustomerOptions();
+      setCustomerDropdownOpen(true);
+    });
+    customerOptions.forEach((option) => {
+      option.addEventListener("click", () => selectCustomer(option));
+    });
+    document.addEventListener("click", (event) => {
+      if (!customerCombobox || customerCombobox.contains(event.target)) return;
+      setCustomerDropdownOpen(false);
+    });
     form.addEventListener("input", render);
     form.addEventListener("change", render);
     document.body.addEventListener("htmx:afterSwap", (event) => {
       if (event.target.id === "pos-seat-map") render();
     });
+    filterCustomerOptions();
     render();
   })();
 </script>
