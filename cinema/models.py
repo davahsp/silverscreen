@@ -169,6 +169,8 @@ class Product(models.Model):
 
 
 class Order(models.Model):
+    MAX_TICKETS = 10
+
     number = models.CharField(max_length=32, unique=True)
     source = models.CharField(max_length=10, choices=OrderSource.choices)
     status = models.CharField(max_length=20, choices=OrderStatus.choices)

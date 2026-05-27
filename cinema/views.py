@@ -256,7 +256,6 @@ class MovieDetailView(RoleMixin, DetailView):
 
 
 BOOKING_STEPS = ["Pilih Kursi", "Add-ons", "Review", "Pembayaran"]
-MAX_ONLINE_TICKETS = 10
 
 
 class BookingDraftMixin(RoleMixin):
@@ -289,6 +288,7 @@ class BookingDraftMixin(RoleMixin):
                 "current_step": getattr(self, "current_step", 0),
                 "draft": self.get_draft(),
                 "service_charge_price": SERVICE_CHARGE_PRICE,
+                "max_ticket_quantity": Order.MAX_TICKETS,
             }
         )
         return context
@@ -317,8 +317,8 @@ class BookingSeatsView(BookingDraftMixin, TemplateView):
             seat_ids = [int(value) for value in request.POST.getlist("seats")]
         except ValueError:
             seat_ids = []
-        if len(seat_ids) < 1 or len(seat_ids) > MAX_ONLINE_TICKETS:
-            messages.error(request, f"Pilih 1 sampai {MAX_ONLINE_TICKETS} kursi.")
+        if len(seat_ids) < 1 or len(seat_ids) > Order.MAX_TICKETS:
+            messages.error(request, f"Pilih 1 sampai {Order.MAX_TICKETS} kursi.")
             return self.get(request, *args, **kwargs)
         draft["seat_ids"] = seat_ids
         draft["quantity"] = len(seat_ids)

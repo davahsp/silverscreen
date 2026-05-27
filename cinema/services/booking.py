@@ -61,6 +61,8 @@ def calculate_total(showtime, seats, addons):
 def validate_seats(showtime, seat_ids):
     if not seat_ids:
         raise ValidationError("Pilih minimal satu kursi.")
+    if len(seat_ids) > Order.MAX_TICKETS:
+        raise ValidationError(f"Pilih maksimal {Order.MAX_TICKETS} kursi.")
     seats = list(Seat.objects.select_for_update().filter(id__in=seat_ids, studio=showtime.studio, is_active=True))
     if len(seats) != len(set(seat_ids)):
         raise ValidationError("Sebagian kursi tidak tersedia.")

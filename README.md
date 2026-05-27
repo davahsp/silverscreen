@@ -21,7 +21,7 @@ Authentication uses Django's built-in `User` and `Group` models. Each user belon
 
 ### Online Customer Booking
 
-The online booking flow is multi-phase and follows the design reference stepper. Ticket count is inferred from the number of selected seats:
+The online booking flow is multi-phase and follows the design reference stepper. Ticket count is inferred from the number of selected seats and capped by `Order.MAX_TICKETS`:
 
 1. `Pilih Kursi`
 2. `Add-ons`
@@ -331,6 +331,7 @@ Current test coverage includes:
 - Movie detail day-based showtime pagination
 - HTMX movie detail jam tayang list replacement
 - Multi-phase booking with ticket count inferred from selected seats
+- Order max-ticket enforcement in seat selection, limit toasts, and booking service validation
 - Booking add-ons visibility
 - Public movies/movie-detail browsing
 - Login required for booking

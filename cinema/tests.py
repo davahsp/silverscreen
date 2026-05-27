@@ -15,6 +15,7 @@ from cinema.models import (
     AgeRating,
     Movie,
     MovieTheme,
+    Order,
     OrderSource,
     OrderStatus,
     PaymentStatus,
@@ -93,6 +94,25 @@ class SilverScreenServiceTests(TestCase):
 
         with self.assertRaises(ValidationError):
             create_online_order(self.showtime.id, [self.seats[0].id], [])
+
+    def test_order_max_tickets_is_enforced_by_booking_service(self):
+        studio = Studio.objects.create(
+            name="Studio Besar",
+            studio_type=self.studio_type,
+            grid_rows=1,
+            grid_cols=Order.MAX_TICKETS + 1,
+        )
+        save_studio_layout(studio, {(0, column) for column in range(Order.MAX_TICKETS + 1)})
+        showtime = save_showtime(
+            movie=self.movie,
+            studio=studio,
+            start_at=timezone.now() + timedelta(days=1, hours=4),
+            price=45000,
+        )
+        seats = list(Seat.objects.filter(studio=studio).order_by("grid_x_pos"))
+
+        with self.assertRaisesMessage(ValidationError, f"Pilih maksimal {Order.MAX_TICKETS} kursi."):
+            create_online_order(showtime.id, [seat.id for seat in seats], [])
 
     def test_paid_callback_confirms_order_and_tickets(self):
         order = create_online_order(self.showtime.id, [self.seats[0].id], [])
@@ -302,7 +322,18 @@ class SilverScreenServiceTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "django-messages-data")
-        self.assertContains(response, "Pilih 1 sampai 10 kursi.")
+        self.assertContains(response, f"Pilih 1 sampai {Order.MAX_TICKETS} kursi.")
+
+    def test_booking_seat_page_uses_order_max_tickets(self):
+        response = self.client.get(reverse("cinema:booking", args=[self.showtime.id]))
+
+        self.assertEqual(response.context["max_ticket_quantity"], Order.MAX_TICKETS)
+        self.assertContains(response, f"const maxSeats = {Order.MAX_TICKETS};")
+        self.assertContains(
+            response,
+            f"Anda hanya bisa membeli maksimal {Order.MAX_TICKETS} tiket dalam satu pesanan",
+        )
+        self.assertContains(response, "data-seat-selectable")
 
     def test_htmx_messages_are_sent_in_trigger_header(self):
         response = self.client.post(
@@ -313,11 +344,14 @@ class SilverScreenServiceTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         trigger = json.loads(response.headers["HX-Trigger"])
-        self.assertEqual(trigger["ss:messages"]["messages"][0]["message"], "Pilih 1 sampai 10 kursi.")
+        self.assertEqual(
+            trigger["ss:messages"]["messages"][0]["message"],
+            f"Pilih 1 sampai {Order.MAX_TICKETS} kursi.",
+        )
         self.assertIn("error", trigger["ss:messages"]["messages"][0]["tags"])
 
     def test_htmx_messages_are_consumed_after_trigger_header(self):
-        message_text = "Pilih 1 sampai 10 kursi."
+        message_text = f"Pilih 1 sampai {Order.MAX_TICKETS} kursi."
         self.client.post(
             reverse("cinema:booking", args=[self.showtime.id]),
             {"seats": []},

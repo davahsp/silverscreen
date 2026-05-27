@@ -6,7 +6,7 @@
   <div><h1 class="page-title">Pilih Kursi</h1><p class="page-subtitle">Jumlah tiket mengikuti jumlah kursi yang dipilih untuk {{ showtime.movie.title }}.</p></div>
 </div>
 {% include "cinema/partials/booking_stepper.html" %}
-<form method="post" data-seat-form>
+<form method="post" data-seat-form data-seat-limit-message="Anda hanya bisa membeli maksimal {{ max_ticket_quantity }} tiket dalam satu pesanan">
   {% csrf_token %}
   <div class="grid-2">
     <div class="card">
@@ -17,7 +17,7 @@
           {% for seat in seats %}
             {% with occupied=occupancy|seat_status:seat.id %}
               <label class="seat-choice">
-                <input type="checkbox" name="seats" value="{{ seat.id }}" {% if seat.id in selected_seat_ids %}checked{% endif %} {% if occupied or not seat.is_active %}disabled{% endif %}>
+                <input type="checkbox" name="seats" value="{{ seat.id }}" {% if seat.id in selected_seat_ids %}checked{% endif %} {% if occupied or not seat.is_active %}disabled{% else %}data-seat-selectable{% endif %}>
                 <span class="seat {% if occupied %}unavailable{% elif not seat.is_active %}disabled{% endif %}">{{ seat.number }}</span>
               </label>
             {% endwith %}
@@ -63,7 +63,16 @@
     const grandTotal = document.querySelector("[data-grand-total]");
     const ticketPrice = {{ showtime.price }};
     const serviceCharge = {{ service_charge_price }};
+    const maxSeats = {{ max_ticket_quantity }};
+    const limitMessage = form.dataset.seatLimitMessage;
     const formatRupiah = (value) => `Rp${Number(value || 0).toLocaleString("id-ID")}`;
+    const showLimitToast = () => {
+      document.body.dispatchEvent(
+        new CustomEvent("ss:messages", {
+          detail: { messages: [{ message: limitMessage, tags: "warning" }] },
+        })
+      );
+    };
     if (!form || !count || !ticketSubtotal || !grandTotal) return;
     const updateCount = () => {
       const quantity = form.querySelectorAll('input[name="seats"]:checked').length;
@@ -71,7 +80,21 @@
       count.textContent = quantity;
       ticketSubtotal.textContent = formatRupiah(subtotal);
       grandTotal.textContent = formatRupiah(subtotal + serviceCharge);
+      form.querySelectorAll("[data-seat-selectable]").forEach((input) => {
+        const reachedLimit = quantity >= maxSeats;
+        const limited = reachedLimit && !input.checked;
+        input.disabled = limited;
+        input.nextElementSibling.classList.toggle("selection-limit", limited);
+      });
     };
+    form.addEventListener("click", (event) => {
+      const choice = event.target.closest(".seat-choice");
+      if (!choice || !form.contains(choice)) return;
+      const input = choice.querySelector("[data-seat-selectable]");
+      if (!input || input.checked || !input.disabled) return;
+      event.preventDefault();
+      showLimitToast();
+    });
     form.addEventListener("change", updateCount);
     updateCount();
   })();
