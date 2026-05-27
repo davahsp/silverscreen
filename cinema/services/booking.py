@@ -75,7 +75,7 @@ def validate_seats(showtime, seat_ids):
 
 
 @transaction.atomic
-def create_online_order(showtime_id, seat_ids, addons):
+def create_online_order(showtime_id, seat_ids, addons, customer=None):
     showtime = ShowTime.objects.select_for_update().select_related("movie", "studio").get(id=showtime_id)
     if not showtime.is_active or not showtime.movie.is_active or not showtime.studio.is_active:
         raise ValidationError("Showtime tidak tersedia untuk pemesanan.")
@@ -83,6 +83,7 @@ def create_online_order(showtime_id, seat_ids, addons):
     total = calculate_total(showtime, seats, addons)
 
     order = Order.objects.create(
+        customer=customer,
         number=next_order_number(Order),
         channel=OrderChannel.ONLINE,
         status=OrderStatus.PENDING,

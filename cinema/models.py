@@ -1,4 +1,5 @@
 from django.core.exceptions import ValidationError
+from django.conf import settings
 from django.db import models
 from django.db.models import Q
 from django.utils import timezone
@@ -171,6 +172,13 @@ class Product(models.Model):
 class Order(models.Model):
     MAX_TICKETS = 10
 
+    customer = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        related_name="orders",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+    )
     number = models.CharField(max_length=32, unique=True)
     channel = models.CharField(max_length=10, choices=OrderChannel.choices)
     status = models.CharField(max_length=20, choices=OrderStatus.choices)

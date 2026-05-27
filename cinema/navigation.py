@@ -24,7 +24,7 @@ ROLE_NAVIGATION = {
     "staff": [
         {"label": "Counter POS", "target": "cinema:counter_pos"},
         {"label": "Antrian Refund", "target": "cinema:refund_queue"},
-        {"label": "Cari Pesanan", "target": "cinema:order_lookup"},
+        {"label": "Daftar Pesanan", "target": "cinema:orders"},
         {"label": "Stub Gateway", "target": "stub_gateway:payments"},
     ],
     "scheduler": [

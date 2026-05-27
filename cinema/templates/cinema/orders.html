@@ -1,8 +1,8 @@
 {% extends "cinema/base.html" %}
 {% load cinema_tags %}
-{% block title %}Pesanan Saya{% endblock %}
+{% block title %}{{ page_title }}{% endblock %}
 {% block content %}
-<div class="page-header"><div><h1 class="page-title">Pesanan Saya</h1><p class="page-subtitle">Status pesanan online dan onsite demo.</p></div></div>
+<div class="page-header"><div><h1 class="page-title">{{ page_title }}</h1><p class="page-subtitle">{{ page_subtitle }}</p></div></div>
 <div class="order-list orders-wide">
   {% for order in orders %}
     {% with first_ticket=order.tickets.all.0 %}

@@ -10,8 +10,8 @@ This repository implements the Silver Screen MVP based on the SDS and the `silve
 
 Silver Screen supports four operating roles:
 
-- Customer: browse active movies, select showtimes, book tickets online, pay through the payment gateway stub, print tickets, and cancel eligible orders.
-- Staff Counter: create onsite/counter orders after payment, print tickets immediately, search orders, and complete refund queue items.
+- Customer: browse active movies, select showtimes, book tickets online, pay through the payment gateway stub, view their own orders, print tickets, and cancel eligible orders.
+- Staff Counter: create onsite/counter orders after payment, print tickets immediately, view all orders, and complete refund queue items.
 - Scheduler: create and disable showtimes.
 - Manajer Bioskop: manage movies, products, studios, and studio seat layouts.
 
@@ -32,7 +32,7 @@ The booking draft is stored in the session until the customer confirms the revie
 
 On order creation, the system creates:
 
-- `Order` with `channel=ONLINE` and `status=PENDING`
+- `Order` assigned to the requesting customer with `channel=ONLINE` and `status=PENDING`
 - `Ticket` records with `status=HELD`
 - `Payment` with `status=UNPAID`
 - optional `OrderAddon` records
@@ -226,7 +226,8 @@ Staff:
 
 - `/staff/pos/`
 - `/staff/refunds/`
-- `/staff/orders/`
+- `/orders/`
+- `/staff/orders/` (redirects to `/orders/`)
 
 Scheduler:
 
@@ -269,6 +270,7 @@ The UI follows `silverscreen-claude-design/`:
 - Mobile bottom navigation behavior
 - Cards, tables, forms, status badges, seat grid with state legend, POS layout, ticket preview, and gateway page styling
 - Staff POS starts with an unselected horizontal showtime carousel. Choosing a showtime fetches only the seat-map form partial with HTMX; seat selection is capped by `Order.MAX_TICKETS`, the summary stays on the right, add-ons sit below the seat/summary area, and the submit action stays fixed at the viewport bottom.
+- The shared order list endpoint at `/orders/` uses one view and template for customer `Pesanan Saya` and staff `Daftar Pesanan`; customers see only orders assigned to their account, while staff see all orders. `/staff/orders/` redirects to this shared endpoint.
 - Booking summary cards update ticket/add-on quantities, unit prices, subtotals, and grand totals before review
 
 CSS files:
@@ -340,6 +342,7 @@ Current test coverage includes:
 
 - Online order creation
 - Customer order list renders full-width linked order cards with `Metode Pemesanan`, movie poster, ticket count, and showtime start
+- Customer order list queryset is limited to orders assigned to the requesting customer
 - Held ticket creation
 - Unpaid payment creation
 - Gateway VA assignment and issue-payment response data
@@ -360,6 +363,7 @@ Current test coverage includes:
 - Printing tickets without changing ticket status
 - Atomic onsite order creation
 - POS showtime carousel starts unselected, HTMX showtime changes return only the seat-map partial, and POS seat selection uses the `Order.MAX_TICKETS` cap
+- Staff order list uses the shared `/orders/` endpoint and renders all orders as linked order cards
 - Showtime derived `end_at`
 - Showtime disable blocking
 - Studio capacity derivation

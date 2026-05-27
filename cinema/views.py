@@ -15,7 +15,7 @@ from django.utils import timezone
 from django.views import View
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
-from django.views.generic import CreateView, DetailView, FormView, ListView, TemplateView, UpdateView
+from django.views.generic import CreateView, DetailView, FormView, ListView, RedirectView, TemplateView, UpdateView
 
 from .constants import BOOKING_WINDOW_DAYS
 from .forms import CustomerSignupForm, MovieForm, ProductForm, ShowTimeForm, StudioForm
@@ -355,7 +355,12 @@ class BookingReviewView(BookingDraftMixin, TemplateView):
         showtime = self.get_showtime()
         draft = self.get_draft()
         try:
-            order = create_online_order(showtime.id, draft.get("seat_ids", []), draft.get("addons", []))
+            order = create_online_order(
+                showtime.id,
+                draft.get("seat_ids", []),
+                draft.get("addons", []),
+                customer=request.user,
+            )
         except (ValidationError, ValueError) as exc:
             messages.error(request, "; ".join(exc.messages) if hasattr(exc, "messages") else str(exc))
             return self.get(request, *args, **kwargs)
@@ -383,13 +388,37 @@ class BookingPaymentView(RoleMixin, DetailView):
 
 
 class OrderListView(RoleMixin, ListView):
-    required_role = "customer"
     model = Order
     template_name = "cinema/orders.html"
     context_object_name = "orders"
+    allowed_roles = {"customer", "staff"}
+
+    def dispatch(self, request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return redirect_to_login(request.get_full_path())
+        role = user_role(request.user)
+        if role not in self.allowed_roles:
+            if role:
+                messages.error(request, "Anda tidak memiliki akses ke halaman tersebut.")
+                return redirect(default_url_for_role(role))
+            return redirect_to_login(request.get_full_path())
+        return super().dispatch(request, *args, **kwargs)
 
     def get_queryset(self):
-        return Order.objects.select_related("payment").prefetch_related("tickets__showtime__movie").all()
+        queryset = Order.objects.select_related("payment", "customer").prefetch_related("tickets__showtime__movie")
+        if selected_role(self.request) == "customer":
+            return queryset.filter(customer=self.request.user)
+        return queryset
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        if selected_role(self.request) == "staff":
+            context["page_title"] = "Daftar Pesanan"
+            context["page_subtitle"] = "Semua pesanan online dan onsite."
+        else:
+            context["page_title"] = "Pesanan Saya"
+            context["page_subtitle"] = "Status pesanan online dan onsite Anda."
+        return context
 
 
 class OrderDetailView(LoginRequiredMixin, RoleMixin, DetailView):
@@ -508,16 +537,9 @@ class RefundCompleteView(RoleRequiredMixin, View):
         return redirect("cinema:refund_queue")
 
 
-class OrderLookupView(RoleMixin, TemplateView):
+class OrderLookupView(RoleRequiredMixin, RedirectView):
     required_role = "staff"
-    template_name = "cinema/order_lookup.html"
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        q = self.request.GET.get("q", "")
-        context["q"] = q
-        context["orders"] = Order.objects.filter(number__icontains=q)[:20] if q else []
-        return context
+    pattern_name = "cinema:orders"
 
 
 class SchedulerShowTimeListView(RoleMixin, ListView):

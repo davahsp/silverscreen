@@ -528,7 +528,7 @@ class SilverScreenServiceTests(TestCase):
     def test_order_list_cards_link_to_order_detail_and_show_movie_summary(self):
         self.movie.main_picture = "/static/posters/ruang-sunyi.jpg"
         self.movie.save(update_fields=["main_picture"])
-        order = create_online_order(self.showtime.id, [self.seats[0].id, self.seats[1].id], [])
+        order = create_online_order(self.showtime.id, [self.seats[0].id, self.seats[1].id], [], customer=self.customer)
 
         response = self.client.get(reverse("cinema:orders"))
 
@@ -542,6 +542,53 @@ class SilverScreenServiceTests(TestCase):
         self.assertContains(response, "2 tiket")
         self.assertContains(response, timezone.localtime(self.showtime.start_at).strftime("%H:%M"))
         self.assertContains(response, order.get_channel_display())
+
+    def test_shared_orders_page_filters_customer_but_lists_all_orders_for_staff(self):
+        online_order = create_online_order(self.showtime.id, [self.seats[0].id], [], customer=self.customer)
+        onsite_order = create_onsite_order(self.showtime.id, [self.seats[1].id], [(self.product.id, 1)])
+        other_customer = make_role_user("orders_customer", "customer")
+        second_studio = Studio.objects.create(name="Studio 2", studio_type=self.studio_type, grid_rows=1, grid_cols=1)
+        save_studio_layout(second_studio, {(0, 0)})
+        other_showtime = save_showtime(
+            movie=self.movie,
+            studio=second_studio,
+            start_at=timezone.now() + timedelta(days=2),
+            price=45000,
+        )
+        other_seat = Seat.objects.get(studio=second_studio)
+        other_order = create_online_order(other_showtime.id, [other_seat.id], [], customer=other_customer)
+
+        response = self.client.get(reverse("cinema:orders"))
+
+        self.assertContains(response, "Pesanan Saya")
+        self.assertContains(response, online_order.number)
+        self.assertNotContains(response, onsite_order.number)
+        self.assertNotContains(response, other_order.number)
+
+        staff = make_role_user("orders_staff", "staff")
+        self.client.force_login(staff)
+
+        response = self.client.get(reverse("cinema:orders"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Daftar Pesanan")
+        self.assertContains(response, f'class="order-list-card" href="{reverse("cinema:order_detail", args=[online_order.number])}"')
+        self.assertContains(response, f'class="order-list-card" href="{reverse("cinema:order_detail", args=[onsite_order.number])}"')
+        self.assertContains(response, f'class="order-list-card" href="{reverse("cinema:order_detail", args=[other_order.number])}"')
+        self.assertContains(response, online_order.number)
+        self.assertContains(response, onsite_order.number)
+        self.assertContains(response, other_order.number)
+        self.assertContains(response, "Metode Pemesanan")
+        self.assertNotContains(response, "Cari Pesanan")
+        self.assertNotContains(response, 'name="q"')
+
+    def test_staff_orders_legacy_url_redirects_to_shared_orders_endpoint(self):
+        staff = make_role_user("orders_staff_redirect", "staff")
+        self.client.force_login(staff)
+
+        response = self.client.get(reverse("cinema:order_lookup"))
+
+        self.assertRedirects(response, reverse("cinema:orders"))
 
     def test_final_payment_pages_hide_va_instruction_and_countdown(self):
         order = create_online_order(self.showtime.id, [self.seats[0].id], [])
