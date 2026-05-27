@@ -239,7 +239,7 @@ The UI follows `silverscreen-claude-design/`:
 - Customer movie cards use full-card navigation with hover/focus ticket call-to-action footers
 - Movie detail jam tayang is paginated by date across the shared 14-day booking window; the date filter stays statically rendered and HTMX uses `hx-include` to refresh only the list area
 - Mobile bottom navigation behavior
-- Cards, tables, forms, status badges, seat grid, POS layout, ticket preview, and gateway page styling
+- Cards, tables, forms, status badges, seat grid with state legend, POS layout, ticket preview, and gateway page styling
 - Booking summary cards update ticket/add-on quantities, unit prices, subtotals, and grand totals before review
 
 CSS files:

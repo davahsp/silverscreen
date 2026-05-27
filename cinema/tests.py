@@ -334,6 +334,12 @@ class SilverScreenServiceTests(TestCase):
             f"Anda hanya bisa membeli maksimal {Order.MAX_TICKETS} tiket dalam satu pesanan",
         )
         self.assertContains(response, "data-seat-selectable")
+        self.assertContains(response, "legend-available")
+        self.assertContains(response, "legend-selected")
+        self.assertContains(response, "legend-taken")
+        self.assertContains(response, "Sudah Diambil")
+        self.assertNotContains(response, "legend-disabled")
+        self.assertNotContains(response, "Nonaktif")
 
     def test_htmx_messages_are_sent_in_trigger_header(self):
         response = self.client.post(
