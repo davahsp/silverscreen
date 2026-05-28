@@ -273,7 +273,7 @@ The UI follows `silverscreen-claude-design/`:
 - Movie detail jam tayang is paginated by date across the shared 14-day booking window; the date filter stays statically rendered and HTMX uses `hx-include` to refresh only the list area
 - Mobile bottom navigation behavior
 - Cards, tables, forms, status badges, seat grid with state legend, POS layout, ticket preview, and gateway page styling
-- Staff POS starts with an unselected horizontal showtime carousel. Choosing a showtime fetches only the seat-map form partial with HTMX; seat selection is capped by `Order.MAX_TICKETS`, the summary stays on the right, add-ons sit below the seat/summary area, and the submit action stays fixed at the viewport bottom.
+- Staff POS starts with an unselected horizontal showtime carousel limited to active movies with active showtimes today whose `end_at` is still in the future. Choosing a showtime fetches only the seat-map form partial with HTMX; seat selection is capped by `Order.MAX_TICKETS`, the summary stays on the right, add-ons sit below the seat/summary area, and the submit action stays fixed at the viewport bottom.
 - Staff POS includes an optional searchable customer selector so onsite orders can be attached to a customer account or left as walk-in orders.
 - The shared order list shell at `/orders/` uses a directly rendered HTMX filter for order ID, movie name, and showtime date. The order list itself is loaded and replaced from `/orders/table/`; customers see only orders assigned to their account, while staff see all orders. `/staff/orders/` redirects to this shared endpoint.
 - Booking summary cards update ticket/add-on quantities, unit prices, subtotals, and grand totals before review
@@ -371,6 +371,7 @@ Current test coverage includes:
 - Atomic onsite order creation
 - Optional customer assignment for onsite POS orders
 - POS showtime carousel starts unselected, HTMX showtime changes return only the seat-map partial, and POS seat selection uses the `Order.MAX_TICKETS` cap
+- POS showtime carousel only lists today's showtimes that have not ended
 - Staff order list uses the shared `/orders/` endpoint and renders all orders as linked order cards
 - Showtime derived `end_at`
 - Showtime disable blocking

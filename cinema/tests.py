@@ -314,6 +314,12 @@ class SilverScreenServiceTests(TestCase):
     def test_pos_initial_page_has_unselected_showtime_carousel_without_seat_map(self):
         staff = make_role_user("counter_staff", "staff")
         self.client.force_login(staff)
+        today_showtime = save_showtime(
+            movie=self.movie,
+            studio=self.studio,
+            start_at=timezone.now(),
+            price=45000,
+        )
 
         response = self.client.get(reverse("cinema:counter_pos"))
 
@@ -343,16 +349,23 @@ class SilverScreenServiceTests(TestCase):
         self.assertNotContains(response, "<datalist")
         self.assertNotContains(response, " checked")
         self.assertContains(response, 'data-pos-order-area hidden')
+        self.assertContains(response, f'value="{today_showtime.id}"')
         self.assertContains(response, self.product.name)
         self.assertNotContains(response, f"Pilih Kursi - {self.movie.title}")
 
     def test_pos_htmx_showtime_change_returns_only_seat_map_partial(self):
         staff = make_role_user("counter_staff_htmx", "staff")
         self.client.force_login(staff)
+        today_showtime = save_showtime(
+            movie=self.movie,
+            studio=self.studio,
+            start_at=timezone.now(),
+            price=45000,
+        )
 
         response = self.client.get(
             reverse("cinema:counter_pos"),
-            {"showtime": self.showtime.id},
+            {"showtime": today_showtime.id},
             headers={"HX-Request": "true"},
         )
 
@@ -367,11 +380,17 @@ class SilverScreenServiceTests(TestCase):
     def test_pos_can_assign_optional_customer_to_onsite_order(self):
         staff = make_role_user("counter_staff_customer", "staff")
         self.client.force_login(staff)
+        today_showtime = save_showtime(
+            movie=self.movie,
+            studio=self.studio,
+            start_at=timezone.now(),
+            price=45000,
+        )
 
         response = self.client.post(
             reverse("cinema:counter_pos"),
             {
-                "showtime": self.showtime.id,
+                "showtime": today_showtime.id,
                 "customer": self.customer.id,
                 "seats": [self.seats[0].id],
             },
@@ -380,6 +399,38 @@ class SilverScreenServiceTests(TestCase):
         order = Order.objects.get(channel=OrderChannel.ONSITE)
         self.assertRedirects(response, reverse("cinema:order_detail", args=[order.number]))
         self.assertEqual(order.customer, self.customer)
+
+    def test_pos_showtime_carousel_only_lists_today_showtimes_that_have_not_ended(self):
+        staff = make_role_user("counter_staff_today", "staff")
+        self.client.force_login(staff)
+        today_showtime = save_showtime(
+            movie=self.movie,
+            studio=self.studio,
+            start_at=timezone.now(),
+            price=45000,
+        )
+        second_studio = Studio.objects.create(name="Studio 2", studio_type=self.studio_type, grid_rows=1, grid_cols=1)
+        save_studio_layout(second_studio, {(0, 0)})
+        tomorrow_showtime = save_showtime(
+            movie=self.movie,
+            studio=second_studio,
+            start_at=timezone.now() + timedelta(days=1),
+            price=45000,
+        )
+        third_studio = Studio.objects.create(name="Studio 3", studio_type=self.studio_type, grid_rows=1, grid_cols=1)
+        save_studio_layout(third_studio, {(0, 0)})
+        ended_showtime = save_showtime(
+            movie=self.movie,
+            studio=third_studio,
+            start_at=timezone.now() - timedelta(minutes=self.movie.runtime_minutes + 5),
+            price=45000,
+        )
+
+        response = self.client.get(reverse("cinema:counter_pos"))
+
+        self.assertContains(response, f'value="{today_showtime.id}"')
+        self.assertNotContains(response, f'value="{tomorrow_showtime.id}"')
+        self.assertNotContains(response, f'value="{ended_showtime.id}"')
 
     def test_print_order_tickets_does_not_change_ticket_status_or_qr_identifier(self):
         order = create_onsite_order(self.showtime.id, [self.seats[0].id], [])

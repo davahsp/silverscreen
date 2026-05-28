@@ -55,6 +55,26 @@ def booking_window_date_range():
     return dates[0], dates[-1]
 
 
+def counter_pos_showtimes(now=None):
+    now = now or timezone.now()
+    today = timezone.localdate(now)
+    current_tz = timezone.get_current_timezone()
+    day_start = timezone.make_aware(datetime.combine(today, datetime.min.time()), current_tz)
+    day_end = day_start + timedelta(days=1)
+    return (
+        ShowTime.objects.filter(
+            is_active=True,
+            movie__is_active=True,
+            studio__is_active=True,
+            start_at__gte=day_start,
+            start_at__lt=day_end,
+            end_at__gt=now,
+        )
+        .select_related("movie", "studio", "studio__studio_type")
+        .order_by("start_at", "movie__title", "studio__name")
+    )
+
+
 def parse_booking_date(value, allowed_dates):
     if not value:
         return None
@@ -537,6 +557,7 @@ class CounterPOSView(RoleMixin, TemplateView):
         showtime_id = self.request.GET.get("showtime") or self.request.POST.get("showtime")
         selected_customer_id = self.request.POST.get("customer") or self.request.GET.get("customer")
         customers = User.objects.filter(groups__name="customer").order_by("username").distinct()
+        available_showtimes = counter_pos_showtimes()
         selected_customer = None
         if selected_customer_id and selected_customer_id.isdigit():
             selected_customer = customers.filter(pk=int(selected_customer_id)).first()
@@ -544,12 +565,12 @@ class CounterPOSView(RoleMixin, TemplateView):
         seats = []
         occupancy = {}
         if showtime_id:
-            showtime = get_object_or_404(ShowTime.objects.select_related("movie", "studio"), pk=showtime_id, is_active=True)
+            showtime = get_object_or_404(available_showtimes, pk=showtime_id)
             seats = Seat.objects.filter(studio=showtime.studio).order_by("grid_y_pos", "grid_x_pos")
             occupancy = {seat_id: TicketStatus.HELD for seat_id in unavailable_seat_ids(showtime)}
         context.update(
             {
-                "showtimes": ShowTime.objects.filter(is_active=True).select_related("movie", "studio"),
+                "showtimes": available_showtimes,
                 "showtime": showtime,
                 "seats": seats,
                 "products": Product.objects.filter(is_active=True),
@@ -578,6 +599,8 @@ class CounterPOSView(RoleMixin, TemplateView):
     def post(self, request, *args, **kwargs):
         try:
             showtime_id = int(request.POST["showtime"])
+            if not counter_pos_showtimes().filter(pk=showtime_id).exists():
+                raise ValidationError("Showtime tidak tersedia untuk penjualan counter.")
             seat_ids = [int(value) for value in request.POST.getlist("seats")]
             order = create_onsite_order(
                 showtime_id,
