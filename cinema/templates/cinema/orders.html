@@ -2,41 +2,46 @@
 {% load cinema_tags %}
 {% block title %}{{ page_title }}{% endblock %}
 {% block content %}
-<div class="page-header"><div><h1 class="page-title">{{ page_title }}</h1><p class="page-subtitle">{{ page_subtitle }}</p></div></div>
-<div class="order-list orders-wide">
-  {% for order in orders %}
-    {% with first_ticket=order.tickets.all.0 %}
-      <a class="order-list-card" href="{% url 'cinema:order_detail' order.number %}">
-        <div class="order-list-poster">
-          {% if first_ticket.showtime.movie.main_picture %}
-            <img src="{{ first_ticket.showtime.movie.main_picture }}" alt="{{ first_ticket.showtime.movie.title }}">
-          {% else %}
-            <div class="order-list-poster-fallback">
-              <span>{{ first_ticket.showtime.movie.title|default:order.number }}</span>
-            </div>
-          {% endif %}
-        </div>
-        <div class="order-list-main">
-          <h2>{{ first_ticket.showtime.movie.title|default:order.number }}</h2>
-          <div class="order-list-subtitle">
-            {{ order.tickets.count }} tiket
-            {% if first_ticket %}
-              &middot; {{ first_ticket.showtime.start_at|date:"d M Y H:i" }}
-            {% endif %}
-          </div>
-          <div class="order-list-details">
-            <span class="font-mono">{{ order.number }}</span>
-            <span>Metode Pemesanan: {{ order.get_channel_display }}</span>
-            <strong>{{ order.total_amount|rupiah }}</strong>
-          </div>
-        </div>
-        <div class="order-list-status">
-          {% include "cinema/partials/status_badge.html" with status=order.status label=order.get_status_display %}
-        </div>
-      </a>
-    {% endwith %}
-  {% empty %}
-    <div class="empty-state">Belum ada pesanan.</div>
-  {% endfor %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">{{ page_title }}</h1>
+    <p class="page-subtitle">{{ page_subtitle }}</p>
+  </div>
+</div>
+
+<form
+  id="order-filter"
+  class="order-filter orders-wide"
+  action="{% url 'cinema:orders_table' %}"
+  method="get"
+  aria-label="Filter pesanan"
+  hx-get="{% url 'cinema:orders_table' %}"
+  hx-target="#order-table-partial"
+  hx-swap="outerHTML"
+  hx-trigger="input changed delay:350ms, change, submit"
+>
+  <div class="form-group">
+    <label class="form-label" for="order-id-filter">Order ID</label>
+    <input id="order-id-filter" type="text" name="order_id" value="{{ order_id_filter }}" placeholder="Contoh: ORD">
+  </div>
+  <div class="form-group">
+    <label class="form-label" for="movie-name-filter">Nama Film</label>
+    <input id="movie-name-filter" type="text" name="movie_name" value="{{ movie_name_filter }}" placeholder="Cari judul film">
+  </div>
+  <div class="form-group">
+    <label class="form-label" for="order-date-filter">Tanggal Tayang</label>
+    <input id="order-date-filter" type="date" name="date" value="{{ date_filter }}">
+  </div>
+</form>
+
+<div
+  id="order-table-partial"
+  class="orders-wide"
+  hx-get="{% url 'cinema:orders_table' %}"
+  hx-trigger="load"
+  hx-include="#order-filter"
+  hx-swap="outerHTML"
+>
+  <div class="empty-state">Memuat pesanan...</div>
 </div>
 {% endblock %}

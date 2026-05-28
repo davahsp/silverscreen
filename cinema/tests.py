@@ -565,6 +565,18 @@ class SilverScreenServiceTests(TestCase):
 
         response = self.client.get(reverse("cinema:orders"))
 
+        self.assertContains(response, "Pesanan Saya")
+        self.assertContains(response, 'id="order-filter"')
+        self.assertContains(response, 'hx-get="/orders/table/"')
+        self.assertContains(response, 'hx-target="#order-table-partial"')
+        self.assertContains(response, 'hx-trigger="load"')
+        self.assertContains(response, 'name="order_id"')
+        self.assertContains(response, 'name="movie_name"')
+        self.assertContains(response, 'type="date"')
+        self.assertNotContains(response, f'class="order-list-card" href="{reverse("cinema:order_detail", args=[order.number])}"')
+
+        response = self.client.get(reverse("cinema:orders_table"), headers={"HX-Request": "true"})
+
         detail_url = reverse("cinema:order_detail", args=[order.number])
         self.assertContains(response, "Metode Pemesanan")
         self.assertNotContains(response, "Sumber")
@@ -575,6 +587,44 @@ class SilverScreenServiceTests(TestCase):
         self.assertContains(response, "2 tiket")
         self.assertContains(response, timezone.localtime(self.showtime.start_at).strftime("%H:%M"))
         self.assertContains(response, order.get_channel_display())
+        self.assertNotContains(response, 'id="order-filter"')
+
+    def test_order_table_partial_filters_by_order_id_movie_name_and_showtime_date(self):
+        order = create_online_order(self.showtime.id, [self.seats[0].id], [], customer=self.customer)
+        second_theme = MovieTheme.objects.create(name="Action")
+        second_movie = Movie.objects.create(
+            title="Langit Merah",
+            synopsis="Aksi.",
+            age_rating=AgeRating.R13,
+            runtime_minutes=101,
+            movie_theme=second_theme,
+        )
+        second_studio = Studio.objects.create(name="Studio 2", studio_type=self.studio_type, grid_rows=1, grid_cols=1)
+        save_studio_layout(second_studio, {(0, 0)})
+        second_showtime = save_showtime(
+            movie=second_movie,
+            studio=second_studio,
+            start_at=timezone.now() + timedelta(days=3),
+            price=45000,
+        )
+        second_seat = Seat.objects.get(studio=second_studio)
+        second_order = create_online_order(second_showtime.id, [second_seat.id], [], customer=self.customer)
+
+        response = self.client.get(reverse("cinema:orders_table"), {"order_id": order.number[-6:]})
+
+        self.assertContains(response, order.number)
+        self.assertNotContains(response, second_order.number)
+
+        response = self.client.get(reverse("cinema:orders_table"), {"movie_name": second_movie.title[:6]})
+
+        self.assertContains(response, second_order.number)
+        self.assertNotContains(response, order.number)
+
+        selected_date = timezone.localtime(second_showtime.start_at).date().isoformat()
+        response = self.client.get(reverse("cinema:orders_table"), {"date": selected_date})
+
+        self.assertContains(response, second_order.number)
+        self.assertNotContains(response, order.number)
 
     def test_shared_orders_page_filters_customer_but_lists_all_orders_for_staff(self):
         online_order = create_online_order(self.showtime.id, [self.seats[0].id], [], customer=self.customer)
@@ -594,6 +644,14 @@ class SilverScreenServiceTests(TestCase):
         response = self.client.get(reverse("cinema:orders"))
 
         self.assertContains(response, "Pesanan Saya")
+        self.assertContains(response, 'id="order-filter"')
+        self.assertContains(response, 'name="order_id"')
+        self.assertContains(response, 'name="movie_name"')
+        self.assertContains(response, 'name="date"')
+        self.assertNotContains(response, online_order.number)
+
+        response = self.client.get(reverse("cinema:orders_table"), headers={"HX-Request": "true"})
+
         self.assertContains(response, online_order.number)
         self.assertNotContains(response, onsite_order.number)
         self.assertNotContains(response, other_order.number)
@@ -605,6 +663,11 @@ class SilverScreenServiceTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Daftar Pesanan")
+        self.assertContains(response, 'id="order-filter"')
+        self.assertNotContains(response, online_order.number)
+
+        response = self.client.get(reverse("cinema:orders_table"), headers={"HX-Request": "true"})
+
         self.assertContains(response, f'class="order-list-card" href="{reverse("cinema:order_detail", args=[online_order.number])}"')
         self.assertContains(response, f'class="order-list-card" href="{reverse("cinema:order_detail", args=[onsite_order.number])}"')
         self.assertContains(response, f'class="order-list-card" href="{reverse("cinema:order_detail", args=[other_order.number])}"')
@@ -612,7 +675,7 @@ class SilverScreenServiceTests(TestCase):
         self.assertContains(response, onsite_order.number)
         self.assertContains(response, other_order.number)
         self.assertContains(response, "Metode Pemesanan")
-        self.assertNotContains(response, "Cari Pesanan")
+        self.assertNotContains(response, 'id="order-filter"')
         self.assertNotContains(response, 'name="q"')
 
     def test_staff_orders_legacy_url_redirects_to_shared_orders_endpoint(self):

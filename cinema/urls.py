@@ -16,6 +16,7 @@ urlpatterns = [
     path("booking/<int:showtime_id>/review/", views.BookingReviewView.as_view(), name="booking_review"),
     path("booking/orders/<str:number>/payment/", views.BookingPaymentView.as_view(), name="booking_payment"),
     path("orders/", views.OrderListView.as_view(), name="orders"),
+    path("orders/table/", views.OrderTablePartialView.as_view(), name="orders_table"),
     path("orders/<str:number>/", views.OrderDetailView.as_view(), name="order_detail"),
     path("orders/<str:number>/cancel/", views.OrderCancelView.as_view(), name="order_cancel"),
     path("orders/<str:number>/print/", views.OrderPrintView.as_view(), name="order_print"),

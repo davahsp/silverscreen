@@ -393,10 +393,7 @@ class BookingPaymentView(RoleMixin, DetailView):
         return context
 
 
-class OrderListView(RoleMixin, ListView):
-    model = Order
-    template_name = "cinema/orders.html"
-    context_object_name = "orders"
+class OrderAccessMixin(RoleMixin):
     allowed_roles = {"customer", "staff"}
 
     def dispatch(self, request, *args, **kwargs):
@@ -410,20 +407,67 @@ class OrderListView(RoleMixin, ListView):
             return redirect_to_login(request.get_full_path())
         return super().dispatch(request, *args, **kwargs)
 
-    def get_queryset(self):
-        queryset = Order.objects.select_related("payment", "customer").prefetch_related("tickets__showtime__movie")
-        if selected_role(self.request) == "customer":
-            return queryset.filter(customer=self.request.user)
-        return queryset
+    def get_order_page_context(self):
+        if selected_role(self.request) == "staff":
+            return {
+                "page_title": "Daftar Pesanan",
+                "page_subtitle": "Semua pesanan online dan onsite.",
+            }
+        return {
+            "page_title": "Pesanan Saya",
+            "page_subtitle": "Status pesanan online dan onsite Anda.",
+        }
+
+
+class OrderListView(OrderAccessMixin, TemplateView):
+    template_name = "cinema/orders.html"
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        if selected_role(self.request) == "staff":
-            context["page_title"] = "Daftar Pesanan"
-            context["page_subtitle"] = "Semua pesanan online dan onsite."
-        else:
-            context["page_title"] = "Pesanan Saya"
-            context["page_subtitle"] = "Status pesanan online dan onsite Anda."
+        context.update(self.get_order_page_context())
+        context.update(
+            {
+                "order_id_filter": self.request.GET.get("order_id", "").strip(),
+                "movie_name_filter": self.request.GET.get("movie_name", "").strip(),
+                "date_filter": self.request.GET.get("date", "").strip(),
+            }
+        )
+        return context
+
+
+class OrderTablePartialView(OrderAccessMixin, ListView):
+    model = Order
+    template_name = "cinema/partials/order_table.html"
+    context_object_name = "orders"
+
+    def get_queryset(self):
+        queryset = Order.objects.select_related("payment", "customer").prefetch_related("tickets__showtime__movie")
+        if selected_role(self.request) == "customer":
+            queryset = queryset.filter(customer=self.request.user)
+
+        order_id = self.request.GET.get("order_id", "").strip()
+        movie_name = self.request.GET.get("movie_name", "").strip()
+        date_value = self.request.GET.get("date", "").strip()
+
+        if order_id:
+            queryset = queryset.filter(number__icontains=order_id)
+        if movie_name:
+            queryset = queryset.filter(tickets__showtime__movie__title__icontains=movie_name)
+        if date_value:
+            try:
+                selected_date = datetime.strptime(date_value, "%Y-%m-%d").date()
+            except ValueError:
+                selected_date = None
+            if selected_date is not None:
+                queryset = queryset.filter(tickets__showtime__start_at__date=selected_date)
+
+        return queryset.distinct()
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["has_order_filters"] = any(
+            self.request.GET.get(name, "").strip() for name in ("order_id", "movie_name", "date")
+        )
         return context
 
 

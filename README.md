@@ -223,6 +223,7 @@ Customer:
 - `/booking/<showtime_id>/review/`
 - `/booking/orders/<order_number>/payment/`
 - `/orders/`
+- `/orders/table/` (HTMX order list partial)
 - `/orders/<order_number>/`
 
 Staff:
@@ -274,7 +275,7 @@ The UI follows `silverscreen-claude-design/`:
 - Cards, tables, forms, status badges, seat grid with state legend, POS layout, ticket preview, and gateway page styling
 - Staff POS starts with an unselected horizontal showtime carousel. Choosing a showtime fetches only the seat-map form partial with HTMX; seat selection is capped by `Order.MAX_TICKETS`, the summary stays on the right, add-ons sit below the seat/summary area, and the submit action stays fixed at the viewport bottom.
 - Staff POS includes an optional searchable customer selector so onsite orders can be attached to a customer account or left as walk-in orders.
-- The shared order list endpoint at `/orders/` uses one view and template for customer `Pesanan Saya` and staff `Daftar Pesanan`; customers see only orders assigned to their account, while staff see all orders. `/staff/orders/` redirects to this shared endpoint.
+- The shared order list shell at `/orders/` uses a directly rendered HTMX filter for order ID, movie name, and showtime date. The order list itself is loaded and replaced from `/orders/table/`; customers see only orders assigned to their account, while staff see all orders. `/staff/orders/` redirects to this shared endpoint.
 - Booking summary cards update ticket/add-on quantities, unit prices, subtotals, and grand totals before review
 
 CSS files:
@@ -345,7 +346,9 @@ python -m django test --settings=silverscreen.settings
 Current test coverage includes:
 
 - Online order creation
-- Customer order list renders full-width linked order cards with `Metode Pemesanan`, movie poster, ticket count, and showtime start
+- Customer order list shell renders the static HTMX filter and loads the order table partial
+- Order table partial renders full-width linked order cards with `Metode Pemesanan`, movie poster, ticket count, and showtime start
+- Order table partial filters by order ID, movie name, and showtime date
 - Customer order list queryset is limited to orders assigned to the requesting customer
 - Held ticket creation
 - Unpaid payment creation
