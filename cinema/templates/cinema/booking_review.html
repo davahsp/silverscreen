@@ -25,7 +25,7 @@
     <div class="card-header">Konfirmasi</div>
     <div class="card-body">
       <p class="text-muted">Setelah pesanan dibuat, tiket berstatus HELD dan pembayaran diterbitkan melalui stub payment gateway.</p>
-      <form method="post">{% csrf_token %}<button class="button button-primary button-full">Buat Pesanan</button></form>
+      <form method="post" data-confirm data-confirm-mode="default" data-confirm-title="Buat pesanan?" data-confirm-message="Total {{ total|rupiah }} untuk {{ selected_seats|length }} kursi. Kursi akan ditahan (HELD) dan pembayaran diterbitkan." data-confirm-yes="Buat Pesanan" data-confirm-no="Periksa Lagi">{% csrf_token %}<button class="button button-primary button-full">Buat Pesanan</button></form>
       <a class="button button-secondary button-full mt-4" href="{% url 'cinema:booking_addons' showtime.id %}">Kembali</a>
     </div>
   </div>

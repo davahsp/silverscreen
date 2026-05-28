@@ -20,6 +20,12 @@
             hx-post="{% url 'cinema:manager_studio_toggle' studio.pk %}"
             hx-target="#manager-studio-detail"
             hx-swap="outerHTML"
+            data-confirm
+            data-confirm-mode="danger"
+            data-confirm-title="Nonaktifkan studio?"
+            data-confirm-message="Studio &laquo;{{ studio.name }}&raquo; tidak akan tersedia untuk penjadwalan baru. Anda dapat memulihkannya nanti."
+            data-confirm-yes="Nonaktifkan"
+            data-confirm-no="Batal"
           >
             {% csrf_token %}
             <button class="button button-danger" type="submit">Nonaktifkan</button>
@@ -122,6 +128,12 @@
             hx-post="{% url 'cinema:manager_studio_toggle' studio.pk %}"
             hx-target="#manager-studio-detail"
             hx-swap="outerHTML"
+            data-confirm
+            data-confirm-mode="danger"
+            data-confirm-title="Nonaktifkan studio?"
+            data-confirm-message="Studio &laquo;{{ studio.name }}&raquo; tidak akan tersedia untuk penjadwalan baru. Anda dapat memulihkannya nanti."
+            data-confirm-yes="Nonaktifkan"
+            data-confirm-no="Batal"
           >
             {% csrf_token %}
             <button class="button button-danger" type="submit">Nonaktifkan</button>

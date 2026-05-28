@@ -34,7 +34,7 @@
             <form method="post" action="{% url 'cinema:manager_movie_toggle' movie.pk %}" class="toggle-switch-form">
               {% csrf_token %}
               <label class="toggle-switch">
-                <input class="toggle-switch-input" type="checkbox" role="switch" aria-label="{% if movie.is_active %}Nonaktifkan{% else %}Aktifkan{% endif %} {{ movie.title }}" {% if movie.is_active %}checked{% endif %} onchange="this.form.submit()">
+                <input class="toggle-switch-input" type="checkbox" role="switch" aria-label="{% if movie.is_active %}Nonaktifkan{% else %}Aktifkan{% endif %} {{ movie.title }}" {% if movie.is_active %}checked{% endif %} onchange="this.form.submit()" data-confirm data-confirm-when="unchecked" data-confirm-mode="danger" data-confirm-title="Nonaktifkan film?" data-confirm-message="Film &laquo;{{ movie.title }}&raquo; tidak akan tampil untuk penjadwalan. Anda dapat mengaktifkannya kembali." data-confirm-yes="Nonaktifkan" data-confirm-no="Batal">
                 <span class="toggle-switch-track"><span class="toggle-switch-thumb"></span></span>
                 <span class="toggle-switch-text">{{ movie.is_active|yesno:"Aktif,Nonaktif" }}</span>
               </label>

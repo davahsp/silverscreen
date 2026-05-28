@@ -9,7 +9,7 @@
   </div>
 </div>
 
-<form method="post" class="pos-form" data-pos-form>
+<form method="post" class="pos-form" data-pos-form data-confirm data-confirm-mode="default" data-confirm-title="Buat order?" data-confirm-message="Order akan dibuat dan tiket dibuka untuk kursi yang dipilih. Pastikan pesanan sudah benar." data-confirm-yes="Buat Order" data-confirm-no="Periksa Lagi">
   {% csrf_token %}
   <div class="card mb-4">
     <div class="card-header">Showtime</div>

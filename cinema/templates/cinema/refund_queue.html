@@ -12,7 +12,7 @@
         <td>{{ payment.order.number }}</td>
         <td>{{ payment.amount|rupiah }}</td>
         <td>{% include "cinema/partials/status_badge.html" with status=payment.status label=payment.get_status_display %}</td>
-        <td><form method="post" action="{% url 'cinema:refund_complete' payment.pk %}">{% csrf_token %}<button class="button button-primary">Tandai Refund Selesai</button></form></td>
+        <td><form method="post" action="{% url 'cinema:refund_complete' payment.pk %}" data-confirm data-confirm-mode="warning" data-confirm-title="Selesaikan refund?" data-confirm-message="Tandai refund pesanan {{ payment.order.number }} ({{ payment.amount|rupiah }}) sebagai selesai. Tindakan ini tidak dapat diurungkan." data-confirm-yes="Tandai Selesai" data-confirm-no="Batal">{% csrf_token %}<button class="button button-primary">Tandai Refund Selesai</button></form></td>
       </tr>
     {% empty %}
       <tr><td colspan="5">Tidak ada refund pending.</td></tr>
