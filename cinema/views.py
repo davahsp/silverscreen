@@ -101,11 +101,20 @@ def selected_role(request):
     return user_role(getattr(request, "user", None))
 
 
-def _enforce_role(request, required_role):
+def _normalize_allowed_roles(allowed_roles):
+    if allowed_roles is None:
+        return None
+    if isinstance(allowed_roles, str):
+        return {allowed_roles}
+    return set(allowed_roles)
+
+
+def _enforce_role(request, allowed_roles):
     if not request.user.is_authenticated:
         return redirect_to_login(request.get_full_path())
     role = user_role(request.user)
-    if required_role and role != required_role:
+    normalized_roles = _normalize_allowed_roles(allowed_roles)
+    if normalized_roles and role not in normalized_roles:
         if role:
             messages.error(request, "Anda tidak memiliki akses ke halaman tersebut.")
             return redirect(default_url_for_role(role))
@@ -120,11 +129,11 @@ class IndexView(View):
 
 
 class RoleMixin:
-    required_role = None
+    allowed_roles = None
 
     def dispatch(self, request, *args, **kwargs):
-        if self.required_role:
-            denied = _enforce_role(request, self.required_role)
+        if self.allowed_roles:
+            denied = _enforce_role(request, self.allowed_roles)
             if denied is not None:
                 return denied
         return super().dispatch(request, *args, **kwargs)
@@ -141,10 +150,10 @@ class RoleMixin:
 class RoleRequiredMixin:
     """For non-template action views (POST endpoints) that need auth + role."""
 
-    required_role = None
+    allowed_roles = None
 
     def dispatch(self, request, *args, **kwargs):
-        denied = _enforce_role(request, self.required_role)
+        denied = _enforce_role(request, self.allowed_roles)
         if denied is not None:
             return denied
         return super().dispatch(request, *args, **kwargs)
@@ -262,7 +271,7 @@ BOOKING_STEPS = ["Pilih Kursi", "Add-ons", "Review", "Pembayaran"]
 
 
 class BookingDraftMixin(RoleMixin):
-    required_role = "customer"
+    allowed_roles = "customer"
 
     def get_showtime(self):
         return get_object_or_404(
@@ -408,7 +417,7 @@ class BookingReviewView(BookingDraftMixin, TemplateView):
 
 
 class BookingPaymentView(RoleMixin, DetailView):
-    required_role = "customer"
+    allowed_roles = "customer"
     model = Order
     slug_field = "number"
     slug_url_kwarg = "number"
@@ -521,7 +530,7 @@ class OrderDetailView(LoginRequiredMixin, RoleMixin, DetailView):
 
 
 class OrderCancelView(RoleRequiredMixin, View):
-    required_role = "customer"
+    allowed_roles = "customer"
 
     def post(self, request, number):
         try:
@@ -555,7 +564,7 @@ class PaymentCallbackView(View):
 
 
 class CounterPOSView(RoleMixin, TemplateView):
-    required_role = "staff"
+    allowed_roles = "staff"
     template_name = "cinema/staff_pos.html"
     htmx_template_name = "cinema/partials/staff_pos_seat_map.html"
 
@@ -628,7 +637,7 @@ class CounterPOSView(RoleMixin, TemplateView):
 
 
 class RefundQueueView(RoleMixin, ListView):
-    required_role = "staff"
+    allowed_roles = "staff"
     model = Payment
     template_name = "cinema/refund_queue.html"
     context_object_name = "payments"
@@ -638,7 +647,7 @@ class RefundQueueView(RoleMixin, ListView):
 
 
 class RefundCompleteView(RoleRequiredMixin, View):
-    required_role = "staff"
+    allowed_roles = "staff"
 
     def post(self, request, pk):
         payment = get_object_or_404(Payment, pk=pk, status=PaymentStatus.REFUND_PENDING)
@@ -649,12 +658,12 @@ class RefundCompleteView(RoleRequiredMixin, View):
 
 
 class OrderLookupView(RoleRequiredMixin, RedirectView):
-    required_role = "staff"
+    allowed_roles = "staff"
     pattern_name = "cinema:orders"
 
 
 class SchedulerShowTimeListView(RoleMixin, ListView):
-    required_role = "scheduler"
+    allowed_roles = "scheduler"
     model = ShowTime
     template_name = "cinema/scheduler_showtimes.html"
     context_object_name = "showtimes"
@@ -662,7 +671,7 @@ class SchedulerShowTimeListView(RoleMixin, ListView):
 
 
 class SchedulerShowTimeCreateView(RoleMixin, FormView):
-    required_role = "scheduler"
+    allowed_roles = "scheduler"
     form_class = ShowTimeForm
     template_name = "cinema/showtime_form.html"
     success_url = reverse_lazy("cinema:scheduler_showtimes")
@@ -674,7 +683,7 @@ class SchedulerShowTimeCreateView(RoleMixin, FormView):
 
 
 class SchedulerShowTimeDisableView(RoleRequiredMixin, View):
-    required_role = "scheduler"
+    allowed_roles = "scheduler"
 
     def post(self, request, pk):
         try:
@@ -686,7 +695,7 @@ class SchedulerShowTimeDisableView(RoleRequiredMixin, View):
 
 
 class ManagerDashboardView(RoleMixin, TemplateView):
-    required_role = "manager"
+    allowed_roles = "manager"
     template_name = "cinema/manager_dashboard.html"
 
     def get_context_data(self, **kwargs):
@@ -703,7 +712,7 @@ class ManagerDashboardView(RoleMixin, TemplateView):
 
 
 class ManagerMovieListView(RoleMixin, ListView):
-    required_role = "manager"
+    allowed_roles = "manager"
     model = Movie
     template_name = "cinema/manager_movies.html"
     context_object_name = "movies"
@@ -711,7 +720,7 @@ class ManagerMovieListView(RoleMixin, ListView):
 
 
 class ManagerMovieCreateView(RoleMixin, CreateView):
-    required_role = "manager"
+    allowed_roles = "manager"
     model = Movie
     form_class = MovieForm
     template_name = "cinema/manager_movie_form.html"
@@ -729,7 +738,7 @@ class ManagerMovieCreateView(RoleMixin, CreateView):
 
 
 class ManagerMovieDetailView(RoleMixin, DetailView):
-    required_role = "manager"
+    allowed_roles = "manager"
     model = Movie
     template_name = "cinema/manager_movie_detail.html"
     context_object_name = "movie"
@@ -747,7 +756,7 @@ class ManagerMovieDetailPartialView(ManagerMovieDetailView):
 
 
 class ManagerMovieUpdateView(RoleMixin, UpdateView):
-    required_role = "manager"
+    allowed_roles = "manager"
     model = Movie
     form_class = MovieForm
     template_name = "cinema/object_form.html"
@@ -774,7 +783,7 @@ class ManagerMovieUpdateView(RoleMixin, UpdateView):
 
 
 class ManagerMovieToggleView(RoleRequiredMixin, View):
-    required_role = "manager"
+    allowed_roles = "manager"
 
     def post(self, request, pk):
         movie = get_object_or_404(Movie, pk=pk)
@@ -784,14 +793,14 @@ class ManagerMovieToggleView(RoleRequiredMixin, View):
 
 
 class ManagerProductListView(RoleMixin, ListView):
-    required_role = "manager"
+    allowed_roles = "manager"
     model = Product
     template_name = "cinema/manager_products.html"
     context_object_name = "products"
 
 
 class ManagerProductCreateView(RoleMixin, CreateView):
-    required_role = "manager"
+    allowed_roles = "manager"
     model = Product
     form_class = ProductForm
     template_name = "cinema/manager_product_form.html"
@@ -809,7 +818,7 @@ class ManagerProductCreateView(RoleMixin, CreateView):
 
 
 class ManagerProductDetailView(RoleMixin, DetailView):
-    required_role = "manager"
+    allowed_roles = "manager"
     model = Product
     template_name = "cinema/manager_product_detail.html"
     context_object_name = "product"
@@ -826,7 +835,7 @@ class ManagerProductDetailPartialView(ManagerProductDetailView):
 
 
 class ManagerProductUpdateView(RoleMixin, UpdateView):
-    required_role = "manager"
+    allowed_roles = "manager"
     model = Product
     form_class = ProductForm
     template_name = "cinema/object_form.html"
@@ -850,7 +859,7 @@ class ManagerProductUpdateView(RoleMixin, UpdateView):
 
 
 class ManagerProductToggleView(RoleRequiredMixin, View):
-    required_role = "manager"
+    allowed_roles = "manager"
 
     def post(self, request, pk):
         product = get_object_or_404(Product, pk=pk)
@@ -860,7 +869,7 @@ class ManagerProductToggleView(RoleRequiredMixin, View):
 
 
 class ManagerStudioListView(RoleMixin, ListView):
-    required_role = "manager"
+    allowed_roles = "manager"
     model = Studio
     template_name = "cinema/manager_studios.html"
     context_object_name = "studios"
@@ -882,7 +891,7 @@ class ManagerStudioListView(RoleMixin, ListView):
 
 
 class ManagerInactiveStudioListView(RoleMixin, ListView):
-    required_role = "manager"
+    allowed_roles = "manager"
     model = Studio
     template_name = "cinema/manager_studios.html"
     context_object_name = "studios"
@@ -904,7 +913,7 @@ class ManagerInactiveStudioListView(RoleMixin, ListView):
 
 
 class ManagerStudioDetailView(RoleMixin, DetailView):
-    required_role = "manager"
+    allowed_roles = "manager"
     model = Studio
     template_name = "cinema/manager_studio_detail.html"
     context_object_name = "studio"
@@ -1037,7 +1046,7 @@ class ManagerStudioDetailPartialView(ManagerStudioDetailView):
 
 
 class ManagerStudioCreateView(ManagerStudioLayoutMixin, ManagerStudioFormTitleMixin, RoleMixin, CreateView):
-    required_role = "manager"
+    allowed_roles = "manager"
     model = Studio
     form_class = StudioForm
     template_name = "cinema/studio_form.html"
@@ -1059,7 +1068,7 @@ class ManagerStudioCreateView(ManagerStudioLayoutMixin, ManagerStudioFormTitleMi
 
 
 class ManagerStudioUpdateView(ManagerStudioFormTitleMixin, RoleMixin, UpdateView):
-    required_role = "manager"
+    allowed_roles = "manager"
     model = Studio
     form_class = StudioForm
     template_name = "cinema/studio_form.html"
@@ -1113,7 +1122,7 @@ class ManagerStudioUpdateView(ManagerStudioFormTitleMixin, RoleMixin, UpdateView
 
 
 class ManagerStudioToggleView(RoleRequiredMixin, View):
-    required_role = "manager"
+    allowed_roles = "manager"
 
     def post(self, request, pk):
         studio = get_object_or_404(Studio.objects.select_related("studio_type").prefetch_related("seats"), pk=pk)
@@ -1136,7 +1145,7 @@ class ManagerStudioToggleView(RoleRequiredMixin, View):
 
 
 class ManagerStudioRestoreView(RoleRequiredMixin, View):
-    required_role = "manager"
+    allowed_roles = "manager"
 
     def post(self, request, pk):
         studio = get_object_or_404(Studio.objects.select_related("studio_type").prefetch_related("seats"), pk=pk)

@@ -17,6 +17,8 @@ Silver Screen supports four operating roles:
 
 Authentication uses Django's built-in `User` and `Group` models. Each user belongs to one role group (`customer`, `staff`, `scheduler`, or `manager`). Customers can self-register; staff, scheduler, and manager accounts are provisioned via the seed command or Django admin. Superusers are treated as managers.
 
+Role-gated class-based views declare `allowed_roles`, which accepts either one role name string or a list of permitted role names.
+
 ## SDS Rules Implemented
 
 ### Online Customer Booking
@@ -410,6 +412,7 @@ Current test coverage includes:
 - Login required for booking
 - Role-aware login redirect (customer/staff/scheduler/manager)
 - Cross-role access is redirected to the user's home
+- RoleRequiredMixin accepts a single allowed role or multiple allowed roles
 - Customer self-signup creates a user in the `customer` group and redirects to the login page
 - Logout returns to the login page
 - Manager movie list rows link to the movie detail shell and render poster thumbnails with an active-status switch

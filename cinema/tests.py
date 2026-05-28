@@ -10,9 +10,11 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.contrib.auth.models import Group, User
 from django.contrib.messages.storage.base import Message
 from django.contrib.messages import constants as message_constants
-from django.test import TestCase, override_settings
+from django.test import RequestFactory, TestCase, override_settings
+from django.http import HttpResponse
 from django.urls import reverse
 from django.utils import timezone
+from django.views import View
 from PIL import Image
 
 from cinema.constants import BOOKING_WINDOW_DAYS
@@ -38,6 +40,7 @@ from cinema.services.cancellation import USED_CANCEL_MESSAGE, cancel_order, prin
 from cinema.services.payments import apply_payment_callback
 from cinema.services.scheduling import disable_showtime, save_showtime
 from cinema.services.studios import save_studio_layout
+from cinema.views import RoleRequiredMixin
 from stub_payment_gateway.management.commands.expire_gateway_payments import expire_due_gateway_payments
 from stub_payment_gateway.models import GatewayPayment, GatewayPaymentStatus
 from stub_payment_gateway.services import mark_paid
@@ -97,6 +100,32 @@ class SilverScreenServiceTests(TestCase):
             category=ProductCategory.FOOD,
             is_active=False,
         )
+
+    def test_role_required_mixin_accepts_string_or_multiple_allowed_roles(self):
+        class StaffOnlyView(RoleRequiredMixin, View):
+            allowed_roles = "staff"
+
+            def get(self, request):
+                return HttpResponse("ok")
+
+        class StaffOrManagerView(RoleRequiredMixin, View):
+            allowed_roles = ["staff", "manager"]
+
+            def get(self, request):
+                return HttpResponse("ok")
+
+        factory = RequestFactory()
+        staff = make_role_user("role_guard_staff", "staff")
+        manager = make_role_user("role_guard_manager", "manager")
+
+        staff_request = factory.get("/staff-only/")
+        staff_request.user = staff
+        self.assertEqual(StaffOnlyView.as_view()(staff_request).status_code, 200)
+
+        for path, user in (("/multi-role/staff/", staff), ("/multi-role/manager/", manager)):
+            request = factory.get(path)
+            request.user = user
+            self.assertEqual(StaffOrManagerView.as_view()(request).status_code, 200)
 
     def test_online_order_creation_holds_seats_and_creates_unpaid_payment(self):
         order = create_online_order(self.showtime.id, [self.seats[0].id], [(self.product.id, 2)])
