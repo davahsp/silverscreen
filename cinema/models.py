@@ -262,6 +262,14 @@ class Order(models.Model):
     def __str__(self):
         return self.number
 
+    @property
+    def is_cancellable(self):
+        return (
+            self.status in {OrderStatus.PENDING, OrderStatus.CONFIRMED}
+            and self.channel == OrderChannel.ONLINE
+            and not self.tickets.filter(status=TicketStatus.USED).exists()
+        )
+
 
 class Ticket(models.Model):
     code = models.CharField(max_length=32, unique=True)

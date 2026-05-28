@@ -72,7 +72,9 @@
       <div class="card-header">Aksi</div>
       <div class="card-body">
         <button type="button" class="button button-primary button-full mb-4" onclick="window.print()">Cetak Tiket</button>
-        <form method="post" action="{% url 'cinema:order_cancel' order.number %}" data-confirm data-confirm-mode="danger" data-confirm-title="Batalkan pesanan?" data-confirm-message="Pesanan {{ order.number }} akan dibatalkan. Tindakan ini tidak dapat diurungkan." data-confirm-yes="Batalkan Pesanan" data-confirm-no="Kembali">{% csrf_token %}<button class="button button-danger button-full">Batalkan Pesanan</button></form>
+        {% if order.is_cancellable %}
+          <form method="post" action="{% url 'cinema:order_cancel' order.pk %}" data-confirm data-confirm-mode="danger" data-confirm-title="Batalkan pesanan?" data-confirm-message="Pesanan {{ order.number }} akan dibatalkan. Tindakan ini tidak dapat diurungkan." data-confirm-yes="Batalkan Pesanan" data-confirm-no="Kembali">{% csrf_token %}<button class="button button-danger button-full">Batalkan Pesanan</button></form>
+        {% endif %}
       </div>
     </div>
   </div>

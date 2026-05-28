@@ -15,7 +15,7 @@ This repository implements the Silver Screen MVP based on the SDS and the `silve
 Silver Screen supports four operating roles:
 
 - Customer: browse active movies, select showtimes, book tickets online, pay through the payment gateway stub, view their own orders, print tickets, and cancel eligible orders.
-- Staff Counter: create onsite/counter orders after payment, print tickets immediately, view all orders, and complete refund queue items.
+- Staff Counter: create onsite/counter orders after payment, print tickets immediately, view all orders, cancel eligible online orders, and complete refund queue items.
 - Scheduler: create and disable showtimes.
 - Manajer Bioskop: manage movies, products, studios, and studio seat layouts.
 
@@ -91,6 +91,8 @@ Online cancellation rules:
 - Used ticket: cancellation is blocked with `Tiket sudah digunakan, pesanan tidak dapat dibatalkan.`
 
 Staff can complete refunds manually from the refund queue. Refund automation is intentionally not implemented.
+
+Order cancellation is available only to users in the `customer` or `staff` groups. Customers who are not staff can cancel only orders assigned to their account; staff can cancel any eligible online order. Onsite orders cannot be canceled.
 
 ### Onsite Counter Orders
 
@@ -231,6 +233,7 @@ Customer:
 - `/orders/`
 - `/orders/table/` (HTMX order list partial)
 - `/orders/<order_number>/`
+- `/orders/<pk>/cancel/`
 
 Staff:
 
@@ -393,6 +396,8 @@ Current test coverage includes:
 - Unpaid cancellation cancels the provider-side gateway payment
 - Paid confirmed cancellation and refund queue transition
 - Used ticket cancellation block
+- Order `is_cancellable` flag requires an online order in `PENDING` or `CONFIRMED` status with no used tickets
+- Customer cancellation endpoint is limited to the customer's own orders, while staff can cancel any eligible order
 - Used ticket seat and showtime protection
 - QR UUID assignment for confirmed tickets
 - Printing tickets without changing ticket status

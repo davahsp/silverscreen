@@ -7,12 +7,17 @@ USED_CANCEL_MESSAGE = "Tiket sudah digunakan, pesanan tidak dapat dibatalkan."
 
 
 @transaction.atomic
-def cancel_order(order_number):
-    order = Order.objects.select_for_update().get(number=order_number)
+def cancel_order(order_or_number):
+    if isinstance(order_or_number, Order):
+        order = Order.objects.select_for_update().get(pk=order_or_number.pk)
+    else:
+        order = Order.objects.select_for_update().get(number=order_or_number)
     payment = order.payment
     tickets = order.tickets.select_for_update()
     if tickets.filter(status=TicketStatus.USED).exists():
         raise ValidationError(USED_CANCEL_MESSAGE)
+    if not order.is_cancellable:
+        raise ValidationError("Pesanan tidak dapat dibatalkan pada status saat ini.")
     if payment.status == PaymentStatus.UNPAID:
         if payment.gateway_payment_id:
             from stub_payment_gateway.services import mark_cancelled

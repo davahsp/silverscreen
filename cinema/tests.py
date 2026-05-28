@@ -297,6 +297,36 @@ class SilverScreenServiceTests(TestCase):
         self.assertEqual(order.tickets.get().status, TicketStatus.CANCELED)
         self.assertEqual(gateway_payment.status, GatewayPaymentStatus.CANCELLED)
 
+    def test_order_is_cancellable_flag_requires_online_pending_or_confirmed_without_used_tickets(self):
+        order = create_online_order(self.showtime.id, [self.seats[0].id], [])
+        self.assertTrue(order.is_cancellable)
+
+        apply_payment_callback(
+            {
+                "internal_payment_id": order.payment.internal_payment_id,
+                "gateway_payment_id": order.payment.gateway_payment_id,
+                "status": "PAID",
+            }
+        )
+        order.refresh_from_db()
+        self.assertTrue(order.is_cancellable)
+
+        order.status = OrderStatus.CANCELED
+        order.save(update_fields=["status"])
+        self.assertFalse(order.is_cancellable)
+
+        expired_order = create_online_order(self.showtime.id, [self.seats[1].id], [])
+        expired_order.status = OrderStatus.EXPIRED
+        expired_order.save(update_fields=["status"])
+        self.assertFalse(expired_order.is_cancellable)
+
+        used_order = create_onsite_order(self.showtime.id, [self.seats[2].id], [])
+        self.assertFalse(used_order.is_cancellable)
+        ticket = used_order.tickets.get()
+        ticket.status = TicketStatus.USED
+        ticket.save(update_fields=["status"])
+        self.assertFalse(used_order.is_cancellable)
+
     def test_unpaid_cancellation_does_not_override_final_gateway_payment(self):
         order = create_online_order(self.showtime.id, [self.seats[0].id], [])
         GatewayPayment.objects.filter(gateway_payment_id=order.payment.gateway_payment_id).update(
@@ -327,6 +357,17 @@ class SilverScreenServiceTests(TestCase):
         order.refresh_from_db()
         self.assertEqual(order.payment.status, PaymentStatus.REFUND_PENDING)
         self.assertEqual(order.tickets.get().status, TicketStatus.CANCELED)
+
+    def test_onsite_order_cancellation_is_blocked(self):
+        order = create_onsite_order(self.showtime.id, [self.seats[0].id], [])
+
+        with self.assertRaisesMessage(ValidationError, "Pesanan tidak dapat dibatalkan pada status saat ini."):
+            cancel_order(order.number)
+
+        order.refresh_from_db()
+        self.assertEqual(order.status, OrderStatus.CONFIRMED)
+        self.assertEqual(order.payment.status, PaymentStatus.PAID)
+        self.assertEqual(order.tickets.get().status, TicketStatus.CONFIRMED)
 
     def test_used_ticket_cancellation_is_blocked_and_keeps_qr_identifier(self):
         order = create_onsite_order(self.showtime.id, [self.seats[0].id], [])
@@ -650,6 +691,18 @@ class SilverScreenServiceTests(TestCase):
             self.assertNotContains(response, "Expired")
             self.assertNotContains(response, "QR Identifier")
 
+    def test_order_detail_cancel_button_uses_cancellable_flag(self):
+        online_order = create_online_order(self.showtime.id, [self.seats[0].id], [], customer=self.customer)
+        onsite_order = create_onsite_order(self.showtime.id, [self.seats[1].id], [], customer=self.customer)
+
+        response = self.client.get(reverse("cinema:order_detail", args=[online_order.number]))
+        self.assertContains(response, "Batalkan Pesanan")
+        self.assertContains(response, reverse("cinema:order_cancel", args=[online_order.pk]))
+
+        response = self.client.get(reverse("cinema:order_detail", args=[onsite_order.number]))
+        self.assertNotContains(response, "Batalkan Pesanan")
+        self.assertNotContains(response, reverse("cinema:order_cancel", args=[onsite_order.pk]))
+
     def test_order_list_cards_link_to_order_detail_and_show_movie_summary(self):
         self.movie.main_picture = "images/movies/main-pictures/ruang-sunyi.jpg"
         self.movie.save(update_fields=["main_picture"])
@@ -827,11 +880,45 @@ class SilverScreenServiceTests(TestCase):
 
         self.assertNotContains(response, message_text)
 
+    def test_customer_cannot_cancel_another_customers_order(self):
+        other_customer = make_role_user("cancel_other_customer", "customer")
+        order = create_online_order(self.showtime.id, [self.seats[0].id], [], customer=other_customer)
+
+        response = self.client.post(reverse("cinema:order_cancel", args=[order.pk]))
+
+        self.assertEqual(response.status_code, 404)
+        order.refresh_from_db()
+        self.assertEqual(order.status, OrderStatus.PENDING)
+        self.assertEqual(order.payment.status, PaymentStatus.UNPAID)
+
+    def test_staff_can_cancel_any_customer_order(self):
+        staff = make_role_user("cancel_staff", "staff")
+        self.client.force_login(staff)
+        order = create_online_order(self.showtime.id, [self.seats[0].id], [], customer=self.customer)
+
+        response = self.client.post(reverse("cinema:order_cancel", args=[order.pk]))
+
+        self.assertRedirects(response, reverse("cinema:order_detail", args=[order.number]))
+        order.refresh_from_db()
+        self.assertEqual(order.status, OrderStatus.CANCELED)
+        self.assertEqual(order.payment.status, PaymentStatus.CANCELED_BEFORE_PAID)
+
+    def test_scheduler_cannot_cancel_order(self):
+        scheduler = make_role_user("cancel_scheduler", "scheduler")
+        self.client.force_login(scheduler)
+        order = create_online_order(self.showtime.id, [self.seats[0].id], [], customer=self.customer)
+
+        response = self.client.post(reverse("cinema:order_cancel", args=[order.pk]))
+
+        self.assertRedirects(response, reverse("cinema:scheduler_showtimes"))
+        order.refresh_from_db()
+        self.assertEqual(order.status, OrderStatus.PENDING)
+
     def test_htmx_redirect_preserves_messages_for_followup_response(self):
-        order = create_online_order(self.showtime.id, [self.seats[0].id], [])
+        order = create_online_order(self.showtime.id, [self.seats[0].id], [], customer=self.customer)
 
         response = self.client.post(
-            reverse("cinema:order_cancel", args=[order.number]),
+            reverse("cinema:order_cancel", args=[order.pk]),
             headers={"HX-Request": "true"},
         )
 

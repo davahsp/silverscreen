@@ -16,6 +16,7 @@ from django.views import View
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 from django.views.generic import CreateView, DetailView, FormView, ListView, RedirectView, TemplateView, UpdateView
+from django.views.generic.detail import SingleObjectMixin
 
 from .constants import BOOKING_WINDOW_DAYS
 from .forms import CustomerSignupForm, MovieForm, ProductForm, ShowTimeForm, StudioForm
@@ -157,6 +158,10 @@ class RoleRequiredMixin:
         if denied is not None:
             return denied
         return super().dispatch(request, *args, **kwargs)
+
+
+class SingleObjectRequiredMixin(SingleObjectMixin):
+    """For action views that operate on one required model object."""
 
 
 class SilverScreenLoginView(LoginView):
@@ -517,16 +522,25 @@ class OrderDetailView(LoginRequiredMixin, RoleMixin, DetailView):
         )
 
 
-class OrderCancelView(RoleRequiredMixin, View):
-    allowed_roles = "customer"
+class OrderCancelView(RoleRequiredMixin, SingleObjectRequiredMixin, View):
+    allowed_roles = {"customer", "staff"}
+    model = Order
 
-    def post(self, request, number):
+    def get_queryset(self):
+        queryset = Order.objects.all()
+        groups = set(self.request.user.groups.values_list("name", flat=True))
+        if "customer" in groups and "staff" not in groups:
+            queryset = queryset.filter(customer=self.request.user)
+        return queryset
+
+    def post(self, request, pk):
+        order = self.get_object()
         try:
-            cancel_order(number)
+            cancel_order(order)
             messages.success(request, "Pesanan dibatalkan.")
         except ValidationError as exc:
             messages.error(request, "; ".join(exc.messages))
-        return redirect("cinema:order_detail", number=number)
+        return redirect("cinema:order_detail", number=order.number)
 
 
 class OrderPrintView(LoginRequiredMixin, View):
