@@ -237,7 +237,6 @@ Scheduler:
 
 - `/scheduler/showtimes/`
 - `/scheduler/showtimes/new/`
-- `/scheduler/showtimes/<id>/edit/`
 
 Manager:
 

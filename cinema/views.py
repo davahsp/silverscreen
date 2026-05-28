@@ -661,18 +661,6 @@ class SchedulerShowTimeCreateView(RoleMixin, FormView):
         return super().form_valid(form)
 
 
-class SchedulerShowTimeUpdateView(SchedulerShowTimeCreateView):
-    def get_form_kwargs(self):
-        kwargs = super().get_form_kwargs()
-        kwargs["instance"] = get_object_or_404(ShowTime, pk=self.kwargs["pk"])
-        return kwargs
-
-    def form_valid(self, form):
-        form.save()
-        messages.success(self.request, "Showtime diperbarui.")
-        return redirect(self.success_url)
-
-
 class SchedulerShowTimeDisableView(RoleRequiredMixin, View):
     required_role = "scheduler"
 
