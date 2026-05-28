@@ -1,0 +1,76 @@
+{% extends "cinema/base.html" %}
+{% block title %}Tambah Film{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Tambah Film</h1>
+    <p class="page-subtitle">Lengkapi katalog film baru.</p>
+  </div>
+  <a class="button button-secondary" href="{% url 'cinema:manager_movies' %}">Kembali</a>
+</div>
+
+<div class="card manager-detail-panel">
+  <div class="card-header">Data Film</div>
+  <form method="post" enctype="multipart/form-data">
+    <div class="card-body">
+      {% csrf_token %}
+      {% if form.non_field_errors %}
+        <div class="form-help form-help-warning">{{ form.non_field_errors }}</div>
+      {% endif %}
+      <div class="manager-detail-grid">
+        {% for field in form %}
+          {% if field.name == "main_picture" %}
+            <div class="manager-detail-media manager-detail-media-widget">
+              <span class="form-label">{{ field.label }}</span>
+              {{ field }}
+              {% if field.help_text %}<div class="form-help">{{ field.help_text }}</div>{% endif %}
+              {% for error in field.errors %}<div class="form-help form-help-warning">{{ error }}</div>{% endfor %}
+            </div>
+          {% endif %}
+        {% endfor %}
+        <div class="manager-detail-content">
+          <div class="manager-detail-form-fields">
+            {% for field in form %}
+              {% if field.name == "is_active" %}
+                <input type="hidden" name="{{ field.html_name }}" value="on">
+              {% elif field.name != "main_picture" and field.name != "synopsis" %}
+                <div class="form-group">
+                  {% if field.name == "age_rating" or field.name == "movie_theme" %}
+                    <span class="form-label">{{ field.label }}</span>
+                    <div class="choice-pool">
+                      {% for choice in field %}
+                        <label class="choice-pool-item" for="{{ choice.id_for_label }}">
+                          {{ choice.tag }}
+                          <span>{{ choice.choice_label }}</span>
+                        </label>
+                      {% endfor %}
+                    </div>
+                  {% else %}
+                    <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                    {{ field }}
+                  {% endif %}
+                  {% if field.help_text %}<div class="form-help">{{ field.help_text }}</div>{% endif %}
+                  {% for error in field.errors %}<div class="form-help form-help-warning">{{ error }}</div>{% endfor %}
+                </div>
+              {% endif %}
+            {% endfor %}
+            {% for field in form %}
+              {% if field.name == "synopsis" %}
+                <div class="form-group manager-detail-synopsis-field">
+                  <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                  {{ field }}
+                  {% if field.help_text %}<div class="form-help">{{ field.help_text }}</div>{% endif %}
+                  {% for error in field.errors %}<div class="form-help form-help-warning">{{ error }}</div>{% endfor %}
+                </div>
+              {% endif %}
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="sticky-form-actions">
+      <button class="button button-primary">Simpan</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

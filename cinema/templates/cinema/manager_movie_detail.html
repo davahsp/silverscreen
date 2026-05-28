@@ -1,0 +1,14 @@
+{% extends "cinema/base.html" %}
+{% block title %}Detail Film{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">{{ movie.title }}</h1>
+    <p class="page-subtitle">Detail katalog film.</p>
+  </div>
+  <a class="button button-secondary" href="{% url 'cinema:manager_movies' %}">Kembali</a>
+</div>
+<div id="manager-movie-detail" class="card" hx-get="{% url 'cinema:manager_movie_detail_partial' movie.pk %}" hx-trigger="load" hx-swap="outerHTML">
+  <div class="card-body">Memuat detail film...</div>
+</div>
+{% endblock %}

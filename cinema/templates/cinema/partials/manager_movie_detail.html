@@ -1,0 +1,132 @@
+{% load cinema_tags %}
+<div id="manager-movie-detail" class="card manager-detail-panel">
+  {% if update_mode %}
+    <div class="card-header">
+      <span>Ubah Film</span>
+      <button
+        type="button"
+        class="button button-secondary"
+        hx-get="{% url 'cinema:manager_movie_detail_partial' movie.pk %}"
+        hx-target="#manager-movie-detail"
+        hx-swap="outerHTML"
+      >
+        Detail
+      </button>
+    </div>
+    <form
+      method="post"
+      enctype="multipart/form-data"
+      action="{% url 'cinema:manager_movie_edit' movie.pk %}"
+      hx-post="{% url 'cinema:manager_movie_edit' movie.pk %}"
+      hx-target="#manager-movie-detail"
+      hx-swap="outerHTML"
+    >
+      <div class="card-body">
+        {% csrf_token %}
+        {% if form.non_field_errors %}
+          <div class="form-help form-help-warning">{{ form.non_field_errors }}</div>
+        {% endif %}
+        <div class="manager-detail-grid">
+          {% for field in form %}
+            {% if field.name == "main_picture" %}
+              <div class="manager-detail-media manager-detail-media-widget">
+                <span class="form-label">{{ field.label }}</span>
+                {{ field }}
+                {% if field.help_text %}<div class="form-help">{{ field.help_text }}</div>{% endif %}
+                {% for error in field.errors %}<div class="form-help form-help-warning">{{ error }}</div>{% endfor %}
+              </div>
+            {% endif %}
+          {% endfor %}
+          <div class="manager-detail-content">
+            <div class="manager-detail-form-fields">
+              {% for field in form %}
+                {% if field.name != "main_picture" and field.name != "synopsis" %}
+                  <div class="form-group">
+                    {% if field.name == "is_active" %}
+                      <span class="form-label">{{ field.label }}</span>
+                      <label class="toggle-switch">
+                        <input class="toggle-switch-input" type="checkbox" name="{{ field.html_name }}" id="{{ field.id_for_label }}" role="switch" {% if field.value %}checked{% endif %}>
+                        <span class="toggle-switch-track"><span class="toggle-switch-thumb"></span></span>
+                        <span class="toggle-switch-text toggle-switch-text-on">Aktif</span>
+                        <span class="toggle-switch-text toggle-switch-text-off">Nonaktif</span>
+                      </label>
+                    {% elif field.name == "age_rating" or field.name == "movie_theme" %}
+                      <span class="form-label">{{ field.label }}</span>
+                      <div class="choice-pool">
+                        {% for choice in field %}
+                          <label class="choice-pool-item" for="{{ choice.id_for_label }}">
+                            {{ choice.tag }}
+                            <span>{{ choice.choice_label }}</span>
+                          </label>
+                        {% endfor %}
+                      </div>
+                    {% else %}
+                      <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                      {{ field }}
+                    {% endif %}
+                    {% if field.help_text %}<div class="form-help">{{ field.help_text }}</div>{% endif %}
+                    {% for error in field.errors %}<div class="form-help form-help-warning">{{ error }}</div>{% endfor %}
+                  </div>
+                {% endif %}
+              {% endfor %}
+              {% for field in form %}
+                {% if field.name == "synopsis" %}
+                  <div class="form-group manager-detail-synopsis-field">
+                    <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                    {{ field }}
+                    {% if field.help_text %}<div class="form-help">{{ field.help_text }}</div>{% endif %}
+                    {% for error in field.errors %}<div class="form-help form-help-warning">{{ error }}</div>{% endfor %}
+                  </div>
+                {% endif %}
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+      </div>
+        <div class="sticky-form-actions">
+          <button class="button button-primary">Simpan</button>
+        </div>
+    </form>
+  {% else %}
+    <div class="card-header">
+      <span>Detail Film</span>
+      <button
+        type="button"
+        class="button button-secondary"
+        hx-get="{% url 'cinema:manager_movie_detail_partial' movie.pk %}?mode=update"
+        hx-target="#manager-movie-detail"
+        hx-swap="outerHTML"
+      >
+        Edit
+      </button>
+    </div>
+    <div class="card-body">
+      <div class="manager-detail-grid">
+        <div class="manager-detail-media">
+          {% if movie.main_picture %}
+            <img src="{{ movie.main_picture.url }}" alt="{{ movie.title }}">
+          {% else %}
+            <div class="movie-poster">
+              <div>
+                <div class="movie-poster-title">{{ movie.title }}</div>
+                <div class="movie-poster-genre">{{ movie.movie_theme.name }}</div>
+              </div>
+            </div>
+          {% endif %}
+        </div>
+        <div class="manager-detail-content">
+          <div class="manager-detail-title-row">
+            <h2>{{ movie.title }}</h2>
+            {% include "cinema/partials/status_badge.html" with status=movie.is_active|yesno:"ACTIVE,INACTIVE" %}
+          </div>
+          <div class="manager-detail-fields">
+            <div><span>Tema</span><strong>{{ movie.movie_theme.name }}</strong></div>
+            <div><span>Rating</span><strong>{{ movie.get_age_rating_display }}</strong></div>
+            <div><span>Durasi</span><strong>{{ movie.runtime_minutes }} menit</strong></div>
+          </div>
+          <p>{{ movie.synopsis }}</p>
+        </div>
+      </div>
+    </div>
+  {% endif %}
+</div>

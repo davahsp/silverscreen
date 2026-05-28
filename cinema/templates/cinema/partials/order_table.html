@@ -5,7 +5,7 @@
       <a class="order-list-card" href="{% url 'cinema:order_detail' order.number %}">
         <div class="order-list-poster">
           {% if first_ticket.showtime.movie.main_picture %}
-            <img src="{{ first_ticket.showtime.movie.main_picture }}" alt="{{ first_ticket.showtime.movie.title }}">
+            <img src="{{ first_ticket.showtime.movie.main_picture.url }}" alt="{{ first_ticket.showtime.movie.title }}">
           {% else %}
             <div class="order-list-poster-fallback">
               <span>{{ first_ticket.showtime.movie.title|default:order.number }}</span>

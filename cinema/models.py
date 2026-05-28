@@ -1,8 +1,40 @@
+from pathlib import Path
+
 from django.core.exceptions import ValidationError
 from django.conf import settings
+from django.core.files.storage import FileSystemStorage
 from django.db import models
 from django.db.models import Q
+from django.utils.deconstruct import deconstructible
 from django.utils import timezone
+
+
+MOVIE_MAIN_PICTURE_DIR = "images/movies/main-pictures"
+
+
+@deconstructible
+class OverwriteMovieImageStorage(FileSystemStorage):
+    def get_available_name(self, name, max_length=None):
+        if self.exists(name):
+            self.delete(name)
+        return name
+
+
+movie_main_picture_storage = OverwriteMovieImageStorage()
+
+
+def movie_main_picture_upload_to(instance, filename):
+    extension = Path(filename).suffix.lower() or ".jpg"
+    if instance.pk:
+        try:
+            _dirs, files = movie_main_picture_storage.listdir(MOVIE_MAIN_PICTURE_DIR)
+        except FileNotFoundError:
+            files = []
+        for existing in files:
+            if Path(existing).stem == str(instance.pk):
+                movie_main_picture_storage.delete(f"{MOVIE_MAIN_PICTURE_DIR}/{existing}")
+        return f"{MOVIE_MAIN_PICTURE_DIR}/{instance.pk}{extension}"
+    return f"{MOVIE_MAIN_PICTURE_DIR}/pending{extension}"
 
 
 class AgeRating(models.TextChoices):
@@ -61,7 +93,11 @@ class Movie(models.Model):
     title = models.CharField(max_length=180)
     synopsis = models.TextField()
     age_rating = models.CharField(max_length=20, choices=AgeRating.choices)
-    main_picture = models.CharField(max_length=255, blank=True)
+    main_picture = models.ImageField(
+        upload_to=movie_main_picture_upload_to,
+        storage=movie_main_picture_storage,
+        blank=True,
+    )
     runtime_minutes = models.PositiveIntegerField()
     is_active = models.BooleanField(default=True)
     movie_theme = models.ForeignKey(MovieTheme, on_delete=models.PROTECT)

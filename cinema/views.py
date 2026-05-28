@@ -9,8 +9,8 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db.models import Exists, OuterRef
 from django.http import JsonResponse
-from django.shortcuts import get_object_or_404, redirect, resolve_url
-from django.urls import reverse_lazy
+from django.shortcuts import get_object_or_404, redirect, render, resolve_url
+from django.urls import reverse, reverse_lazy
 from django.utils import timezone
 from django.views import View
 from django.views.decorators.csrf import csrf_exempt
@@ -702,8 +702,36 @@ class ManagerMovieCreateView(RoleMixin, CreateView):
     required_role = "manager"
     model = Movie
     form_class = MovieForm
-    template_name = "cinema/object_form.html"
+    template_name = "cinema/manager_movie_form.html"
     success_url = reverse_lazy("cinema:manager_movies")
+
+    def form_valid(self, form):
+        self.object = form.save(commit=False)
+        main_picture = form.cleaned_data.get("main_picture")
+        self.object.main_picture = None
+        self.object.save()
+        if main_picture:
+            self.object.main_picture = main_picture
+            self.object.save(update_fields=["main_picture"])
+        return redirect(self.success_url)
+
+
+class ManagerMovieDetailView(RoleMixin, DetailView):
+    required_role = "manager"
+    model = Movie
+    template_name = "cinema/manager_movie_detail.html"
+    context_object_name = "movie"
+    queryset = Movie.objects.select_related("movie_theme")
+
+
+class ManagerMovieDetailPartialView(ManagerMovieDetailView):
+    template_name = "cinema/partials/manager_movie_detail.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["update_mode"] = self.request.GET.get("mode") == "update"
+        context["form"] = MovieForm(instance=self.object)
+        return context
 
 
 class ManagerMovieUpdateView(RoleMixin, UpdateView):
@@ -711,7 +739,26 @@ class ManagerMovieUpdateView(RoleMixin, UpdateView):
     model = Movie
     form_class = MovieForm
     template_name = "cinema/object_form.html"
-    success_url = reverse_lazy("cinema:manager_movies")
+    context_object_name = "movie"
+
+    def get_queryset(self):
+        return Movie.objects.select_related("movie_theme")
+
+    def get_success_url(self):
+        return reverse("cinema:manager_movie_detail", args=[self.object.pk])
+
+    def form_valid(self, form):
+        self.object = form.save()
+        if self.request.headers.get("HX-Request") == "true":
+            context = self.get_context_data(form=MovieForm(instance=self.object), update_mode=False)
+            return render(self.request, "cinema/partials/manager_movie_detail.html", context)
+        return redirect(self.get_success_url())
+
+    def form_invalid(self, form):
+        if self.request.headers.get("HX-Request") == "true":
+            context = self.get_context_data(form=form, update_mode=True)
+            return render(self.request, "cinema/partials/manager_movie_detail.html", context)
+        return super().form_invalid(form)
 
 
 class ManagerMovieToggleView(RoleRequiredMixin, View):

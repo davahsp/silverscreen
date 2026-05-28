@@ -5,6 +5,47 @@
 <div class="page-header"><div><h1 class="page-title">Film</h1><p class="page-subtitle">Kelola katalog film.</p></div><a class="button button-primary" href="{% url 'cinema:manager_movie_new' %}">Tambah Film</a></div>
 <div class="card"><div class="table-wrapper"><table>
   <thead><tr><th>Judul</th><th>Tema</th><th>Rating</th><th>Durasi</th><th>Status</th><th></th></tr></thead>
-  <tbody>{% for movie in movies %}<tr><td>{{ movie.title }}</td><td>{{ movie.movie_theme.name }}</td><td>{{ movie.get_age_rating_display }}</td><td>{{ movie.runtime_minutes }} menit</td><td>{% include "cinema/partials/status_badge.html" with status=movie.is_active|yesno:"ACTIVE,INACTIVE" %}</td><td><a class="button button-secondary" href="{% url 'cinema:manager_movie_edit' movie.pk %}">Edit</a> <form method="post" action="{% url 'cinema:manager_movie_toggle' movie.pk %}" style="display:inline">{% csrf_token %}<button class="button button-secondary">Toggle</button></form></td></tr>{% empty %}<tr><td colspan="6">Belum ada film.</td></tr>{% endfor %}</tbody>
+  <tbody>
+    {% for movie in movies %}
+      <tr class="table-row-linkable manager-movie-row">
+        <td>
+          <a class="table-row-link manager-movie-link" href="{% url 'cinema:manager_movie_detail' movie.pk %}">
+            <span class="manager-movie-thumb">
+              {% if movie.main_picture %}
+                <img src="{{ movie.main_picture.url }}" alt="{{ movie.title }}">
+              {% else %}
+                <span class="manager-movie-thumb-fallback">
+                  <span>{{ movie.title }}</span>
+                </span>
+              {% endif %}
+            </span>
+            <span class="manager-movie-copy">
+              <strong>{{ movie.title }}</strong>
+              <span>{{ movie.synopsis|truncatechars:110 }}</span>
+            </span>
+          </a>
+        </td>
+        <td><a class="table-row-link" href="{% url 'cinema:manager_movie_detail' movie.pk %}">{{ movie.movie_theme.name }}</a></td>
+        <td><a class="table-row-link" href="{% url 'cinema:manager_movie_detail' movie.pk %}">{{ movie.get_age_rating_display }}</a></td>
+        <td><a class="table-row-link" href="{% url 'cinema:manager_movie_detail' movie.pk %}">{{ movie.runtime_minutes }} menit</a></td>
+        <td><a class="table-row-link" href="{% url 'cinema:manager_movie_detail' movie.pk %}">{% include "cinema/partials/status_badge.html" with status=movie.is_active|yesno:"ACTIVE,INACTIVE" %}</a></td>
+        <td>
+          <div class="manager-row-actions">
+            <form method="post" action="{% url 'cinema:manager_movie_toggle' movie.pk %}" class="toggle-switch-form">
+              {% csrf_token %}
+              <label class="toggle-switch">
+                <input class="toggle-switch-input" type="checkbox" role="switch" aria-label="{% if movie.is_active %}Nonaktifkan{% else %}Aktifkan{% endif %} {{ movie.title }}" {% if movie.is_active %}checked{% endif %} onchange="this.form.submit()">
+                <span class="toggle-switch-track"><span class="toggle-switch-thumb"></span></span>
+                <span class="toggle-switch-text">{{ movie.is_active|yesno:"Aktif,Nonaktif" }}</span>
+              </label>
+              <noscript><button class="button button-secondary">Simpan</button></noscript>
+            </form>
+          </div>
+        </td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="6">Belum ada film.</td></tr>
+    {% endfor %}
+  </tbody>
 </table></div></div>
 {% endblock %}

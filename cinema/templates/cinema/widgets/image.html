@@ -1,0 +1,48 @@
+<div
+  class="image-widget{% if widget.image_url %} image-widget-has-image{% endif %}"
+  data-image-widget
+  data-initial-filename="{{ widget.filename }}"
+  data-initial-url="{{ widget.image_url }}"
+>
+  <label class="image-widget-stage{% if not widget.image_url %} image-widget-stage-empty{% endif %}" for="{{ widget.attrs.id }}" data-image-widget-preview>
+    <img
+      {% if widget.image_url %}src="{{ widget.image_url }}"{% endif %}
+      alt=""
+      data-image-widget-preview-image
+      {% if not widget.image_url %}hidden{% endif %}
+    >
+    <span class="image-widget-placeholder" data-image-widget-preview-empty {% if widget.image_url %}hidden{% endif %}>
+      <svg class="image-widget-placeholder-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <path d="M12 15V4"></path>
+        <path d="M7 9l5-5 5 5"></path>
+        <path d="M5 15v3a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-3"></path>
+      </svg>
+      <span data-image-widget-placeholder-text>Upload image</span>
+    </span>
+  </label>
+
+  <div class="image-widget-footer">
+    <div class="image-widget-empty" data-image-widget-empty {% if widget.is_initial %}hidden{% endif %}>None</div>
+    <div class="image-widget-file" data-image-widget-file {% if not widget.is_initial %}hidden{% endif %}>
+      <span data-image-widget-filename>{{ widget.filename }}</span>
+    </div>
+    <div class="image-widget-actions">
+      <label class="image-widget-change" for="{{ widget.attrs.id }}" data-image-widget-action-label>
+        {% if widget.is_initial %}Ganti Gambar{% else %}Pilih Gambar{% endif %}
+      </label>
+      <button class="image-widget-remove" type="button" aria-label="Hapus gambar" data-image-widget-remove {% if not widget.is_initial %}hidden{% endif %}>&times;</button>
+    </div>
+  </div>
+
+  <input type="{{ widget.type }}" name="{{ widget.name }}" data-image-widget-input hidden{% include "django/forms/widgets/attrs.html" %}>
+  {% if not widget.required %}
+    <input
+      type="checkbox"
+      name="{{ widget.checkbox_name }}"
+      id="{{ widget.checkbox_id }}"
+      class="image-widget-clear-input"
+      data-image-widget-clear-input
+      {% if widget.clear_checked %}checked{% endif %}
+    >
+  {% endif %}
+</div>

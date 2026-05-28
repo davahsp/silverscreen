@@ -4,6 +4,7 @@ from django.contrib.auth.models import User
 
 from .models import AgeRating, Movie, MovieTheme, Product, ProductCategory, ShowTime, Studio, StudioType
 from .services.scheduling import derive_showtime_fields, save_showtime, validate_showtime_window
+from .widgets import ImageWidget
 
 
 class CustomerSignupForm(UserCreationForm):
@@ -13,13 +14,43 @@ class CustomerSignupForm(UserCreationForm):
 
 
 class MovieForm(forms.ModelForm):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["age_rating"].choices = AgeRating.choices
+
     class Meta:
         model = Movie
         fields = ["title", "synopsis", "age_rating", "main_picture", "runtime_minutes", "movie_theme", "is_active"]
+        labels = {
+            "title": "Judul",
+            "synopsis": "Sinopsis",
+            "age_rating": "Rating Umur",
+            "main_picture": "Gambar Utama",
+            "runtime_minutes": "Durasi Film (menit)",
+            "movie_theme": "Tema Film",
+            "is_active": "Status Film",
+        }
         widgets = {
             "synopsis": forms.Textarea(attrs={"rows": 4}),
-            "age_rating": forms.Select(choices=AgeRating.choices),
+            "age_rating": forms.RadioSelect(attrs={"class": "choice-pool-input"}),
+            "movie_theme": forms.RadioSelect(attrs={"class": "choice-pool-input"}),
+            "main_picture": ImageWidget(),
         }
+
+    def save(self, commit=True):
+        old_main_picture = None
+        if self.instance.pk:
+            old_main_picture = (
+                type(self.instance)
+                .objects.filter(pk=self.instance.pk)
+                .values_list("main_picture", flat=True)
+                .first()
+            )
+        movie = super().save(commit=commit)
+        clear_name = self.fields["main_picture"].widget.clear_checkbox_name("main_picture")
+        if commit and old_main_picture and clear_name in self.data and not movie.main_picture:
+            movie._meta.get_field("main_picture").storage.delete(old_main_picture)
+        return movie
 
 
 class MovieThemeForm(forms.ModelForm):

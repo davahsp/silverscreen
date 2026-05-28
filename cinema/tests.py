@@ -1,15 +1,19 @@
 import json
-from io import StringIO
+import os
+import tempfile
+from io import BytesIO, StringIO
 from datetime import timedelta
 from unittest.mock import patch
 
 from django.core.exceptions import ValidationError
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.contrib.auth.models import Group, User
 from django.contrib.messages.storage.base import Message
 from django.contrib.messages import constants as message_constants
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
+from PIL import Image
 
 from cinema.constants import BOOKING_WINDOW_DAYS
 from cinema.messages import serialize_messages
@@ -44,6 +48,14 @@ def make_role_user(username, role):
     group, _ = Group.objects.get_or_create(name=role)
     user.groups.add(group)
     return user
+
+
+def make_uploaded_image(filename, image_format, content_type):
+    image = Image.new("RGB", (1, 1), "white")
+    content = BytesIO()
+    image.save(content, format=image_format)
+    content.seek(0)
+    return SimpleUploadedFile(filename, content.read(), content_type=content_type)
 
 
 class SilverScreenServiceTests(TestCase):
@@ -610,7 +622,7 @@ class SilverScreenServiceTests(TestCase):
             self.assertNotContains(response, "QR Identifier")
 
     def test_order_list_cards_link_to_order_detail_and_show_movie_summary(self):
-        self.movie.main_picture = "/static/posters/ruang-sunyi.jpg"
+        self.movie.main_picture = "images/movies/main-pictures/ruang-sunyi.jpg"
         self.movie.save(update_fields=["main_picture"])
         order = create_online_order(self.showtime.id, [self.seats[0].id, self.seats[1].id], [], customer=self.customer)
 
@@ -633,7 +645,7 @@ class SilverScreenServiceTests(TestCase):
         self.assertNotContains(response, "Sumber")
         self.assertNotContains(response, ">Detail<")
         self.assertContains(response, f'class="order-list-card" href="{detail_url}"')
-        self.assertContains(response, self.movie.main_picture)
+        self.assertContains(response, self.movie.main_picture.url)
         self.assertContains(response, self.movie.title)
         self.assertContains(response, "2 tiket")
         self.assertContains(response, timezone.localtime(self.showtime.start_at).strftime("%H:%M"))
@@ -891,10 +903,143 @@ class AuthenticationTests(TestCase):
         manager = make_role_user("nav_manager", "manager")
         self.client.force_login(manager)
 
-        response = self.client.get(reverse("cinema:manager_movie_edit", args=[self.movie.id]))
+        response = self.client.get(reverse("cinema:manager_movie_detail", args=[self.movie.id]))
 
         active_items = [item["label"] for item in response.context["navigation_items"] if item["active"]]
         self.assertEqual(active_items, ["Film"])
+
+    def test_manager_movies_rows_link_to_detail_and_use_switch_for_active_toggle(self):
+        manager = make_role_user("movie_switch_manager", "manager")
+        self.client.force_login(manager)
+        self.movie.main_picture = "images/movies/main-pictures/ruang-sunyi.jpg"
+        self.movie.save(update_fields=["main_picture"])
+
+        response = self.client.get(reverse("cinema:manager_movies"))
+
+        self.assertContains(response, reverse("cinema:manager_movie_detail", args=[self.movie.id]))
+        self.assertContains(response, "manager-movie-link")
+        self.assertContains(response, self.movie.main_picture.url)
+        self.assertNotContains(response, ">Edit</a>")
+        self.assertContains(response, 'class="toggle-switch-input"')
+        self.assertContains(response, 'role="switch"')
+        self.assertContains(response, reverse("cinema:manager_movie_toggle", args=[self.movie.id]))
+
+    def test_manager_movie_detail_shell_loads_htmx_partial(self):
+        manager = make_role_user("movie_detail_manager", "manager")
+        self.client.force_login(manager)
+
+        response = self.client.get(reverse("cinema:manager_movie_detail", args=[self.movie.id]))
+
+        self.assertContains(response, 'id="manager-movie-detail"')
+        self.assertContains(response, reverse("cinema:manager_movie_detail_partial", args=[self.movie.id]))
+        self.assertContains(response, 'hx-trigger="load"')
+        self.assertContains(response, 'hx-swap="outerHTML"')
+
+    def test_manager_movie_create_uses_movie_form_layout(self):
+        manager = make_role_user("movie_create_manager", "manager")
+        self.client.force_login(manager)
+
+        response = self.client.get(reverse("cinema:manager_movie_new"))
+
+        self.assertContains(response, "Tambah Film")
+        self.assertContains(response, 'data-image-widget')
+        self.assertContains(response, 'class="choice-pool"', count=2)
+        self.assertNotContains(response, '<select name="movie_theme"')
+        self.assertContains(response, 'type="hidden" name="is_active" value="on"')
+        self.assertNotContains(response, 'role="switch"')
+        self.assertContains(response, "manager-detail-synopsis-field")
+        self.assertContains(response, "sticky-form-actions")
+        self.assertNotContains(response, "Form Data")
+
+    def test_manager_movie_detail_partial_switches_between_detail_and_update_modes(self):
+        manager = make_role_user("movie_partial_manager", "manager")
+        self.client.force_login(manager)
+
+        detail_response = self.client.get(reverse("cinema:manager_movie_detail_partial", args=[self.movie.id]))
+        update_response = self.client.get(
+            reverse("cinema:manager_movie_detail_partial", args=[self.movie.id]),
+            {"mode": "update"},
+        )
+
+        self.assertContains(detail_response, 'id="manager-movie-detail"')
+        self.assertContains(detail_response, "?mode=update")
+        self.assertContains(update_response, reverse("cinema:manager_movie_edit", args=[self.movie.id]))
+        self.assertContains(update_response, 'hx-target="#manager-movie-detail"')
+        self.assertContains(update_response, 'class="choice-pool"')
+        self.assertContains(update_response, 'type="radio"')
+        self.assertNotContains(update_response, '<select name="age_rating"')
+        self.assertNotContains(update_response, '<select name="movie_theme"')
+        self.assertNotContains(update_response, 'name="age_rating" value=""')
+        self.assertContains(update_response, 'data-image-widget')
+        self.assertContains(update_response, "None")
+        self.assertContains(update_response, "Pilih Gambar")
+        self.assertNotContains(update_response, "Currently")
+
+    def test_manager_movie_image_widget_shows_bound_filename_and_preview(self):
+        manager = make_role_user("movie_image_widget_manager", "manager")
+        self.client.force_login(manager)
+        self.movie.main_picture = f"images/movies/main-pictures/{self.movie.id}.png"
+        self.movie.save(update_fields=["main_picture"])
+
+        response = self.client.get(
+            reverse("cinema:manager_movie_detail_partial", args=[self.movie.id]),
+            {"mode": "update"},
+        )
+
+        self.assertContains(response, 'data-image-widget')
+        self.assertContains(response, f"{self.movie.id}.png")
+        self.assertContains(response, self.movie.main_picture.url)
+        self.assertContains(response, 'data-image-widget-clear-input')
+        self.assertContains(response, "Ganti Gambar")
+
+    def test_manager_movie_main_picture_upload_replaces_previous_extension(self):
+        manager = make_role_user("movie_upload_manager", "manager")
+        self.client.force_login(manager)
+
+        with tempfile.TemporaryDirectory() as media_root:
+            with override_settings(MEDIA_ROOT=media_root):
+                form_data = {
+                    "title": self.movie.title,
+                    "synopsis": self.movie.synopsis,
+                    "age_rating": self.movie.age_rating,
+                    "runtime_minutes": self.movie.runtime_minutes,
+                    "movie_theme": self.movie.movie_theme_id,
+                    "is_active": "on",
+                }
+                first_image = make_uploaded_image("poster.gif", "GIF", "image/gif")
+                response = self.client.post(
+                    reverse("cinema:manager_movie_edit", args=[self.movie.id]),
+                    {**form_data, "main_picture": first_image},
+                )
+                self.assertRedirects(response, reverse("cinema:manager_movie_detail", args=[self.movie.id]))
+                self.movie.refresh_from_db()
+                first_name = self.movie.main_picture.name
+                self.assertTrue(first_name.endswith(f"/{self.movie.id}.gif"))
+                self.assertTrue(os.path.exists(os.path.join(media_root, first_name)))
+
+                second_image = make_uploaded_image("poster.png", "PNG", "image/png")
+                response = self.client.post(
+                    reverse("cinema:manager_movie_edit", args=[self.movie.id]),
+                    {**form_data, "main_picture": second_image},
+                )
+                self.assertRedirects(response, reverse("cinema:manager_movie_detail", args=[self.movie.id]))
+                self.movie.refresh_from_db()
+
+                self.assertTrue(self.movie.main_picture.name.endswith(f"/{self.movie.id}.png"))
+                self.assertFalse(os.path.exists(os.path.join(media_root, first_name)))
+                self.assertTrue(os.path.exists(os.path.join(media_root, self.movie.main_picture.name)))
+
+                second_name = self.movie.main_picture.name
+                ignored_replacement = make_uploaded_image("ignored.gif", "GIF", "image/gif")
+                response = self.client.post(
+                    reverse("cinema:manager_movie_edit", args=[self.movie.id]),
+                    {**form_data, "main_picture": ignored_replacement, "main_picture-clear": "on"},
+                )
+                self.assertRedirects(response, reverse("cinema:manager_movie_detail", args=[self.movie.id]))
+                self.movie.refresh_from_db()
+
+                self.assertFalse(self.movie.main_picture)
+                self.assertFalse(os.path.exists(os.path.join(media_root, second_name)))
 
     def test_navigation_exact_match_wins_over_parent_sub_match(self):
         scheduler = make_role_user("nav_scheduler", "scheduler")

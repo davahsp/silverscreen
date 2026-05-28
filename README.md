@@ -128,7 +128,7 @@ Blocked disable message:
 
 Manager pages support:
 
-- Movie list, create, edit, active/inactive toggle
+- Movie list, create, detail shell, edit/update mode, active/inactive toggle, and main-picture upload/removal
 - Product list, create, edit, active/inactive toggle
 - Studio list, create, edit, active/inactive toggle
 - Studio layout creation with generated seat numbers
@@ -242,6 +242,11 @@ Manager:
 
 - `/manager/`
 - `/manager/movies/`
+- `/manager/movies/new/`
+- `/manager/movies/<id>/`
+- `/manager/movies/<id>/partial/`
+- `/manager/movies/<id>/edit/`
+- `/manager/movies/<id>/toggle/`
 - `/manager/products/`
 - `/manager/studios/`
 
@@ -275,6 +280,8 @@ The UI follows `silverscreen-claude-design/`:
 - Staff POS starts with an unselected horizontal showtime carousel limited to active movies with active showtimes today whose `end_at` is still in the future. Choosing a showtime fetches only the seat-map form partial with HTMX; seat selection is capped by `Order.MAX_TICKETS`, the summary stays on the right, add-ons sit below the seat/summary area, and the submit action stays fixed at the viewport bottom.
 - Staff POS includes an optional searchable customer selector so onsite orders can be attached to a customer account or left as walk-in orders.
 - The shared order list shell at `/orders/` uses a directly rendered HTMX filter for order ID, movie name, and showtime date. The order list itself is loaded and replaced from `/orders/table/`; customers see only orders assigned to their account, while staff see all orders. `/staff/orders/` redirects to this shared endpoint.
+- Manager movie rows are roomy linked rows with poster thumbnails and a separate active-status switch. The manager movie detail shell loads an HTMX partial that can self-replace between detail and update modes.
+- Manager movie create/update forms use selectable pools for age rating and theme, a sticky viewport save action, and a reusable `ImageWidget` for main-picture upload, preview, replacement, and removal.
 - Booking summary cards update ticket/add-on quantities, unit prices, subtotals, and grand totals before review
 
 CSS files:
@@ -285,6 +292,7 @@ CSS files:
 JavaScript:
 
 - `cinema/static/cinema/js/toasts.js`
+- `cinema/static/cinema/js/image-widget.js`
 - HTMX is loaded on the base template for progressive fragment swaps
 
 ## Setup
@@ -389,11 +397,15 @@ Current test coverage includes:
 - Cross-role access is redirected to the user's home
 - Customer self-signup creates a user in the `customer` group and redirects to the login page
 - Logout returns to the login page
+- Manager movie list rows link to the movie detail shell and render poster thumbnails with an active-status switch
+- Manager movie detail shell loads its HTMX partial, and the partial switches between detail and update modes
+- Manager movie create/update forms render selectable age-rating/theme pools and the reusable image upload widget
+- Movie main-picture uploads replace older files across extension changes and support clearing/removing the stored file
 
 ## Current Limitations
 
 - Authentication uses Django auth + Groups; customer pages (movies list and detail) are public, booking and role pages require login.
-- Image fields are stored as text paths/URLs for MVP.
+- Movie main pictures use `ImageField` uploads under `MEDIA_ROOT/images/movies/main-pictures/<movie.pk>.<ext>`. Reuploading a movie main picture removes the previous file for that movie, even when the extension changes. Other picture fields remain text paths/URLs for MVP.
 - The studio layout builder is intentionally simple.
 - SQLite is used by default.
 - No real payment gateway integration exists.
