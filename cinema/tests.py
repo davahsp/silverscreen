@@ -1145,6 +1145,331 @@ class AuthenticationTests(TestCase):
                 self.assertFalse(product.picture)
                 self.assertFalse(os.path.exists(os.path.join(media_root, second_name)))
 
+    def test_manager_studio_create_uses_seatmap_builder(self):
+        manager = make_role_user("studio_create_manager", "manager")
+        self.client.force_login(manager)
+
+        response = self.client.get(reverse("cinema:manager_studio_new"))
+
+        self.assertContains(response, "Tambah Studio")
+        self.assertContains(response, 'name="name"')
+        self.assertContains(response, 'class="choice-pool"')
+        self.assertContains(response, 'type="radio"')
+        self.assertContains(response, 'data-studio-layout')
+        self.assertContains(response, 'name="layout_rows" value="10"')
+        self.assertContains(response, 'name="layout_cols" value="15"')
+        self.assertContains(response, 'data-layout-size')
+        self.assertContains(response, 'data-layout-capacity')
+        self.assertContains(response, "10 x 15")
+        self.assertContains(response, ">150</span>")
+        self.assertContains(response, 'name="seat_cells"', count=150)
+        self.assertContains(response, 'data-add-row="start"')
+        self.assertContains(response, 'data-add-row="end"')
+        self.assertContains(response, 'data-add-col="start"')
+        self.assertContains(response, 'data-add-col="end"')
+        self.assertContains(response, 'data-delete-row=', count=10)
+        self.assertContains(response, 'data-delete-col=', count=15)
+        self.assertNotContains(response, 'name="grid_rows"')
+        self.assertNotContains(response, 'name="grid_cols"')
+        self.assertNotContains(response, '<select name="studio_type"')
+
+    def test_manager_studio_create_infers_saved_dimensions_from_grid(self):
+        manager = make_role_user("studio_grid_manager", "manager")
+        self.client.force_login(manager)
+
+        response = self.client.post(
+            reverse("cinema:manager_studio_new"),
+            {
+                "name": "Studio Grid",
+                "studio_type": self.studio_type.id,
+                "layout_rows": 2,
+                "layout_cols": 3,
+                "seat_cells": ["0,0", "1,2"],
+            },
+        )
+
+        self.assertRedirects(response, reverse("cinema:manager_studios"))
+        studio = Studio.objects.get(name="Studio Grid")
+        self.assertEqual(studio.grid_rows, 2)
+        self.assertEqual(studio.grid_cols, 3)
+        self.assertEqual(studio.capacity, 2)
+        self.assertTrue(Seat.objects.filter(studio=studio, grid_y_pos=1, grid_x_pos=2).exists())
+
+    def test_manager_studio_list_rows_link_to_detail_without_status_controls(self):
+        manager = make_role_user("studio_list_manager", "manager")
+        self.client.force_login(manager)
+        inactive = Studio.objects.create(
+            name="Studio Arsip",
+            studio_type=self.studio_type,
+            grid_rows=1,
+            grid_cols=1,
+            is_active=False,
+        )
+        save_studio_layout(inactive, {(0, 0)})
+
+        response = self.client.get(reverse("cinema:manager_studios"))
+
+        self.assertContains(response, reverse("cinema:manager_studio_detail", args=[self.studio.id]))
+        self.assertContains(response, "manager-studio-link")
+        self.assertContains(response, reverse("cinema:manager_studios_inactive"))
+        self.assertContains(response, "Studio Nonaktif")
+        self.assertContains(response, "Tambah Studio")
+        self.assertNotContains(response, inactive.name)
+        self.assertNotContains(response, "<th>Grid</th>")
+        self.assertNotContains(response, "<th>Status</th>")
+        self.assertNotContains(response, ">Edit</a>")
+        self.assertNotContains(response, 'class="toggle-switch-input"')
+        self.assertNotContains(response, 'role="switch"')
+        self.assertNotContains(response, "status-badge")
+
+    def test_manager_inactive_studio_list_only_shows_inactive_and_links_back(self):
+        manager = make_role_user("studio_inactive_list_manager", "manager")
+        self.client.force_login(manager)
+        inactive = Studio.objects.create(
+            name="Studio Lama",
+            studio_type=self.studio_type,
+            grid_rows=1,
+            grid_cols=1,
+            is_active=False,
+        )
+        save_studio_layout(inactive, {(0, 0)})
+
+        response = self.client.get(reverse("cinema:manager_studios_inactive"))
+
+        self.assertContains(response, "Studio Nonaktif")
+        self.assertContains(response, reverse("cinema:manager_studios"))
+        self.assertContains(response, "Kembali")
+        self.assertContains(response, inactive.name)
+        self.assertContains(response, reverse("cinema:manager_studio_detail", args=[inactive.id]))
+        self.assertNotContains(response, self.studio.name)
+        self.assertNotContains(response, "Tambah Studio")
+        self.assertNotContains(response, "<th>Grid</th>")
+        self.assertNotContains(response, "<th>Status</th>")
+
+    def test_manager_studio_detail_shell_loads_htmx_partial(self):
+        manager = make_role_user("studio_detail_manager", "manager")
+        self.client.force_login(manager)
+
+        response = self.client.get(reverse("cinema:manager_studio_detail", args=[self.studio.id]))
+
+        self.assertContains(response, 'id="manager-studio-detail"')
+        self.assertContains(response, reverse("cinema:manager_studio_detail_partial", args=[self.studio.id]))
+        self.assertContains(response, 'hx-trigger="load"')
+        self.assertContains(response, 'hx-swap="outerHTML"')
+
+    def test_manager_studio_detail_partial_switches_to_update_mode_with_readonly_seatmap(self):
+        manager = make_role_user("studio_edit_manager", "manager")
+        self.client.force_login(manager)
+        studio = Studio.objects.create(name="Studio Readonly", studio_type=self.studio_type, grid_rows=2, grid_cols=3)
+        save_studio_layout(studio, {(0, 0), (1, 2)})
+
+        detail_response = self.client.get(reverse("cinema:manager_studio_detail_partial", args=[studio.id]))
+        update_response = self.client.get(
+            reverse("cinema:manager_studio_detail_partial", args=[studio.id]),
+            {"mode": "update"},
+        )
+
+        self.assertContains(detail_response, "?mode=update")
+        self.assertContains(detail_response, "Nonaktifkan")
+        self.assertContains(detail_response, reverse("cinema:manager_studio_toggle", args=[studio.id]))
+        self.assertContains(detail_response, "studio-layout-readonly")
+        self.assertContains(detail_response, "studio-readonly-cell-seat")
+        self.assertContains(detail_response, "studio-readonly-cell-empty")
+        self.assertNotContains(detail_response, "studio-layout-note")
+        self.assertNotContains(detail_response, "Anda tidak dapat mengubah / mengatur ulang seatmap")
+        self.assertContains(update_response, reverse("cinema:manager_studio_edit", args=[studio.id]))
+        self.assertContains(update_response, "Nonaktifkan")
+        self.assertContains(update_response, reverse("cinema:manager_studio_toggle", args=[studio.id]))
+        self.assertContains(update_response, 'hx-target="#manager-studio-detail"')
+        self.assertContains(update_response, 'class="choice-pool"')
+        self.assertContains(update_response, 'type="radio"')
+        self.assertContains(update_response, f"{studio.grid_rows} x {studio.grid_cols}")
+        self.assertContains(update_response, str(studio.capacity))
+        self.assertContains(update_response, "Seatmap")
+        self.assertContains(update_response, "studio-layout-readonly")
+        self.assertContains(update_response, "studio-layout-note")
+        self.assertContains(update_response, "Anda tidak dapat mengubah / mengatur ulang seatmap")
+        self.assertContains(update_response, "A1")
+        self.assertNotContains(update_response, "Kursi aktif")
+        self.assertNotContains(update_response, "Tidak aktif")
+        self.assertNotContains(update_response, "data-studio-layout")
+        self.assertNotContains(update_response, "data-add-row")
+        self.assertNotContains(update_response, "data-add-col")
+        self.assertNotContains(update_response, "data-delete-row")
+        self.assertNotContains(update_response, "data-delete-col")
+        self.assertNotContains(update_response, 'name="layout_rows"')
+        self.assertNotContains(update_response, 'name="layout_cols"')
+        self.assertNotContains(update_response, 'name="seat_cells"')
+
+    def test_manager_studio_edit_keeps_existing_seat_layout_immutable(self):
+        manager = make_role_user("studio_immutable_manager", "manager")
+        self.client.force_login(manager)
+        studio = Studio.objects.create(name="Studio Immutable", studio_type=self.studio_type, grid_rows=2, grid_cols=3)
+        save_studio_layout(studio, {(0, 0), (0, 2), (1, 1)})
+        original_positions = set(studio.seats.values_list("grid_y_pos", "grid_x_pos"))
+        original_seat_ids = set(studio.seats.values_list("id", flat=True))
+
+        response = self.client.post(
+            reverse("cinema:manager_studio_edit", args=[studio.id]),
+            {
+                "name": "Studio Renamed",
+                "studio_type": self.studio_type.id,
+                "layout_rows": 1,
+                "layout_cols": 1,
+                "seat_cells": ["0,0"],
+            },
+        )
+
+        self.assertRedirects(response, reverse("cinema:manager_studio_detail", args=[studio.id]))
+        studio.refresh_from_db()
+        self.assertEqual(studio.name, "Studio Renamed")
+        self.assertEqual(studio.grid_rows, 2)
+        self.assertEqual(studio.grid_cols, 3)
+        self.assertEqual(set(studio.seats.values_list("grid_y_pos", "grid_x_pos")), original_positions)
+        self.assertEqual(set(studio.seats.values_list("id", flat=True)), original_seat_ids)
+
+    def test_manager_studio_htmx_update_self_replaces_partial(self):
+        manager = make_role_user("studio_htmx_manager", "manager")
+        self.client.force_login(manager)
+
+        response = self.client.post(
+            reverse("cinema:manager_studio_edit", args=[self.studio.id]),
+            {"name": "Studio HTMX", "studio_type": self.studio_type.id},
+            headers={"HX-Request": "true"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.studio.refresh_from_db()
+        self.assertEqual(self.studio.name, "Studio HTMX")
+        self.assertContains(response, 'id="manager-studio-detail"')
+        self.assertContains(response, "Detail Studio")
+        self.assertContains(response, "Studio HTMX")
+        self.assertContains(response, "?mode=update")
+        self.assertNotContains(response, "<!doctype html>")
+
+    def test_manager_studio_htmx_disable_returns_detail_partial_inactive(self):
+        manager = make_role_user("studio_disable_manager", "manager")
+        self.client.force_login(manager)
+
+        response = self.client.post(
+            reverse("cinema:manager_studio_toggle", args=[self.studio.id]),
+            headers={"HX-Request": "true"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.studio.refresh_from_db()
+        self.assertFalse(self.studio.is_active)
+        self.assertContains(response, 'id="manager-studio-detail"')
+        self.assertContains(response, "Detail Studio")
+        self.assertContains(response, "badge-inactive")
+        self.assertNotContains(response, "?mode=update")
+        self.assertNotContains(response, "Ubah Studio")
+        self.assertNotContains(response, "Nonaktifkan")
+        self.assertContains(response, "Pulihkan")
+        self.assertContains(response, reverse("cinema:manager_studio_restore", args=[self.studio.id]))
+        self.assertNotContains(response, "<!doctype html>")
+
+    def test_manager_studio_inactive_update_mode_get_is_blocked(self):
+        manager = make_role_user("studio_inactive_get_manager", "manager")
+        self.client.force_login(manager)
+        self.studio.is_active = False
+        self.studio.save(update_fields=["is_active"])
+
+        detail_response = self.client.get(reverse("cinema:manager_studio_detail_partial", args=[self.studio.id]))
+        update_response = self.client.get(
+            reverse("cinema:manager_studio_detail_partial", args=[self.studio.id]),
+            {"mode": "update"},
+            headers={"HX-Request": "true"},
+        )
+
+        self.assertFalse(self.studio.is_editable)
+        self.assertNotContains(detail_response, "?mode=update")
+        self.assertNotContains(detail_response, ">Edit<")
+        self.assertEqual(update_response.status_code, 200)
+        self.assertEqual(update_response.content, b"")
+        self.assertEqual(update_response.headers["HX-Reswap"], "none")
+        self.assertIn("Studio nonaktif tidak dapat diedit.", update_response.headers["HX-Trigger"])
+
+    def test_manager_studio_inactive_update_post_is_blocked(self):
+        manager = make_role_user("studio_inactive_post_manager", "manager")
+        self.client.force_login(manager)
+        self.studio.is_active = False
+        self.studio.save(update_fields=["is_active"])
+
+        response = self.client.post(
+            reverse("cinema:manager_studio_edit", args=[self.studio.id]),
+            {"name": "Should Not Change", "studio_type": self.studio_type.id},
+            headers={"HX-Request": "true"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.content, b"")
+        self.assertEqual(response.headers["HX-Reswap"], "none")
+        self.assertIn("Studio nonaktif tidak dapat diedit.", response.headers["HX-Trigger"])
+        self.studio.refresh_from_db()
+        self.assertNotEqual(self.studio.name, "Should Not Change")
+        self.assertFalse(self.studio.is_active)
+
+    def test_manager_studio_inactive_deactivate_post_is_blocked(self):
+        manager = make_role_user("studio_deactivate_block_manager", "manager")
+        self.client.force_login(manager)
+        self.studio.is_active = False
+        self.studio.save(update_fields=["is_active"])
+
+        response = self.client.post(
+            reverse("cinema:manager_studio_toggle", args=[self.studio.id]),
+            headers={"HX-Request": "true"},
+        )
+
+        self.studio.refresh_from_db()
+        self.assertFalse(self.studio.is_active)
+        self.assertFalse(self.studio.is_deactivable)
+        self.assertTrue(self.studio.is_restorable)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.content, b"")
+        self.assertEqual(response.headers["HX-Reswap"], "none")
+        self.assertIn("Studio nonaktif tidak perlu dinonaktifkan.", response.headers["HX-Trigger"])
+
+    def test_manager_studio_htmx_restore_returns_detail_partial_active(self):
+        manager = make_role_user("studio_restore_manager", "manager")
+        self.client.force_login(manager)
+        self.studio.is_active = False
+        self.studio.save(update_fields=["is_active"])
+
+        response = self.client.post(
+            reverse("cinema:manager_studio_restore", args=[self.studio.id]),
+            headers={"HX-Request": "true"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.studio.refresh_from_db()
+        self.assertTrue(self.studio.is_active)
+        self.assertTrue(self.studio.is_editable)
+        self.assertFalse(self.studio.is_restorable)
+        self.assertContains(response, 'id="manager-studio-detail"')
+        self.assertContains(response, "Detail Studio")
+        self.assertContains(response, "badge-active")
+        self.assertContains(response, "?mode=update")
+        self.assertContains(response, "Nonaktifkan")
+        self.assertNotContains(response, "Pulihkan")
+        self.assertNotContains(response, "<!doctype html>")
+
+    def test_manager_studio_active_restore_post_is_blocked(self):
+        manager = make_role_user("studio_restore_block_manager", "manager")
+        self.client.force_login(manager)
+
+        response = self.client.post(
+            reverse("cinema:manager_studio_restore", args=[self.studio.id]),
+            headers={"HX-Request": "true"},
+        )
+
+        self.assertTrue(self.studio.is_active)
+        self.assertFalse(self.studio.is_restorable)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.content, b"")
+        self.assertEqual(response.headers["HX-Reswap"], "none")
+        self.assertIn("Studio aktif tidak perlu dipulihkan.", response.headers["HX-Trigger"])
+
     def test_navigation_exact_match_wins_over_parent_sub_match(self):
         scheduler = make_role_user("nav_scheduler", "scheduler")
         self.client.force_login(scheduler)

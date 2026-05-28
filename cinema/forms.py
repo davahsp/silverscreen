@@ -102,9 +102,34 @@ class StudioTypeForm(forms.ModelForm):
 
 
 class StudioForm(forms.ModelForm):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["studio_type"].empty_label = None
+
     class Meta:
         model = Studio
-        fields = ["name", "studio_type", "grid_rows", "grid_cols", "is_active"]
+        fields = ["name", "studio_type"]
+        labels = {
+            "name": "Nama Studio",
+            "studio_type": "Tipe Studio",
+        }
+        widgets = {
+            "studio_type": forms.RadioSelect(attrs={"class": "choice-pool-input"}),
+        }
+
+    def clean(self):
+        cleaned = super().clean()
+        if self.instance.pk:
+            return cleaned
+        try:
+            rows = int(self.data.get("layout_rows", ""))
+            cols = int(self.data.get("layout_cols", ""))
+        except ValueError:
+            rows = 0
+            cols = 0
+        self.instance.grid_rows = max(rows, 1)
+        self.instance.grid_cols = max(cols, 1)
+        return cleaned
 
 
 class ShowTimeForm(forms.Form):

@@ -50,7 +50,15 @@ urlpatterns = [
     path("manager/products/<int:pk>/edit/", views.ManagerProductUpdateView.as_view(), name="manager_product_edit"),
     path("manager/products/<int:pk>/toggle/", views.ManagerProductToggleView.as_view(), name="manager_product_toggle"),
     path("manager/studios/", views.ManagerStudioListView.as_view(), name="manager_studios"),
+    path("manager/studios/inactive/", views.ManagerInactiveStudioListView.as_view(), name="manager_studios_inactive"),
     path("manager/studios/new/", views.ManagerStudioCreateView.as_view(), name="manager_studio_new"),
+    path("manager/studios/<int:pk>/", views.ManagerStudioDetailView.as_view(), name="manager_studio_detail"),
+    path(
+        "manager/studios/<int:pk>/partial/",
+        views.ManagerStudioDetailPartialView.as_view(),
+        name="manager_studio_detail_partial",
+    ),
     path("manager/studios/<int:pk>/edit/", views.ManagerStudioUpdateView.as_view(), name="manager_studio_edit"),
     path("manager/studios/<int:pk>/toggle/", views.ManagerStudioToggleView.as_view(), name="manager_studio_toggle"),
+    path("manager/studios/<int:pk>/restore/", views.ManagerStudioRestoreView.as_view(), name="manager_studio_restore"),
 ]

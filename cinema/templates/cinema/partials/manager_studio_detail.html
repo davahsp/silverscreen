@@ -1,0 +1,173 @@
+{% load cinema_tags %}
+<div id="manager-studio-detail" class="card manager-detail-panel">
+  {% if update_mode %}
+    <div class="card-header">
+      <span>Ubah Studio</span>
+      <div class="manager-row-actions">
+        <button
+          type="button"
+          class="button button-secondary"
+          hx-get="{% url 'cinema:manager_studio_detail_partial' studio.pk %}"
+          hx-target="#manager-studio-detail"
+          hx-swap="outerHTML"
+        >
+          Detail
+        </button>
+        {% if studio.is_deactivable %}
+          <form
+            method="post"
+            action="{% url 'cinema:manager_studio_toggle' studio.pk %}"
+            hx-post="{% url 'cinema:manager_studio_toggle' studio.pk %}"
+            hx-target="#manager-studio-detail"
+            hx-swap="outerHTML"
+          >
+            {% csrf_token %}
+            <button class="button button-danger" type="submit">Nonaktifkan</button>
+          </form>
+        {% endif %}
+        {% if studio.is_restorable %}
+          <form
+            method="post"
+            action="{% url 'cinema:manager_studio_restore' studio.pk %}"
+            hx-post="{% url 'cinema:manager_studio_restore' studio.pk %}"
+            hx-target="#manager-studio-detail"
+            hx-swap="outerHTML"
+          >
+            {% csrf_token %}
+            <button class="button button-primary" type="submit">Pulihkan</button>
+          </form>
+        {% endif %}
+      </div>
+    </div>
+    <form
+      method="post"
+      action="{% url 'cinema:manager_studio_edit' studio.pk %}"
+      hx-post="{% url 'cinema:manager_studio_edit' studio.pk %}"
+      hx-target="#manager-studio-detail"
+      hx-swap="outerHTML"
+    >
+      <div class="card-body">
+        {% csrf_token %}
+        {% if form.non_field_errors %}
+          <div class="form-help form-help-warning">{{ form.non_field_errors }}</div>
+        {% endif %}
+        <div class="studio-form-fields">
+          <div class="form-group">
+            <label class="form-label" for="{{ form.name.id_for_label }}">{{ form.name.label }}</label>
+            {{ form.name }}
+            {% for error in form.name.errors %}<div class="form-help form-help-warning">{{ error }}</div>{% endfor %}
+          </div>
+          <div class="form-group">
+            <span class="form-label">{{ form.studio_type.label }}</span>
+            <div class="choice-pool">
+              {% for choice in form.studio_type %}
+                <label class="choice-pool-item" for="{{ choice.id_for_label }}">
+                  {{ choice.tag }}
+                  <span>{{ choice.choice_label }}</span>
+                </label>
+              {% endfor %}
+            </div>
+            {% for error in form.studio_type.errors %}<div class="form-help form-help-warning">{{ error }}</div>{% endfor %}
+          </div>
+        </div>
+
+        <div class="studio-layout-summary">
+          <div><span class="form-label">Ukuran Studio</span><strong>{{ layout_rows }} x {{ layout_cols }}</strong></div>
+          <div><span class="form-label">Kapasitas</span><strong>{{ layout_capacity }}</strong></div>
+        </div>
+        <div class="form-group">
+          <span class="form-label">Seatmap</span>
+          <div class="studio-layout-builder studio-layout-readonly">
+            <div class="studio-layout-main studio-layout-readonly-main">
+              <div class="studio-layout-stage">
+                <div class="seat-screen">Layar</div>
+                <div class="studio-readonly-seat-grid" style="--studio-seat-cols: {{ layout_cols }};">
+                  {% for row in layout_grid %}
+                    {% for cell in row %}
+                      <span class="studio-readonly-cell{% if cell.active %} studio-readonly-cell-seat{% else %} studio-readonly-cell-empty{% endif %}">{{ cell.label }}</span>
+                    {% endfor %}
+                  {% endfor %}
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="studio-layout-note">
+            Anda tidak dapat mengubah / mengatur ulang seatmap. Jika Anda salah membuat seatmap atau layout studio berubah setelah renovasi / pengembangan, Anda dapat menonaktifkan studio ini dan membuat studio baru dengan seatmap terbaru.
+          </div>
+        </div>
+      </div>
+      <div class="sticky-form-actions">
+        <button class="button button-primary">Simpan Studio</button>
+      </div>
+    </form>
+  {% else %}
+    <div class="card-header">
+      <span>Detail Studio</span>
+      <div class="manager-row-actions">
+        {% if studio.is_editable %}
+          <button
+            type="button"
+            class="button button-secondary"
+            hx-get="{% url 'cinema:manager_studio_detail_partial' studio.pk %}?mode=update"
+            hx-target="#manager-studio-detail"
+            hx-swap="outerHTML"
+          >
+            Edit
+          </button>
+        {% endif %}
+        {% if studio.is_deactivable %}
+          <form
+            method="post"
+            action="{% url 'cinema:manager_studio_toggle' studio.pk %}"
+            hx-post="{% url 'cinema:manager_studio_toggle' studio.pk %}"
+            hx-target="#manager-studio-detail"
+            hx-swap="outerHTML"
+          >
+            {% csrf_token %}
+            <button class="button button-danger" type="submit">Nonaktifkan</button>
+          </form>
+        {% endif %}
+        {% if studio.is_restorable %}
+          <form
+            method="post"
+            action="{% url 'cinema:manager_studio_restore' studio.pk %}"
+            hx-post="{% url 'cinema:manager_studio_restore' studio.pk %}"
+            hx-target="#manager-studio-detail"
+            hx-swap="outerHTML"
+          >
+            {% csrf_token %}
+            <button class="button button-primary" type="submit">Pulihkan</button>
+          </form>
+        {% endif %}
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="manager-detail-title-row">
+        <h2>{{ studio.name }}</h2>
+        {% include "cinema/partials/status_badge.html" with status=studio.is_active|yesno:"ACTIVE,INACTIVE" %}
+      </div>
+      <div class="manager-detail-fields">
+        <div><span>Tipe</span><strong>{{ studio.studio_type.name }}</strong></div>
+        <div><span>Ukuran Studio</span><strong>{{ layout_rows }} x {{ layout_cols }}</strong></div>
+        <div><span>Kapasitas</span><strong>{{ layout_capacity }}</strong></div>
+      </div>
+      <div class="form-group">
+        <span class="form-label">Seatmap</span>
+        <div class="studio-layout-builder studio-layout-readonly">
+          <div class="studio-layout-main studio-layout-readonly-main">
+            <div class="studio-layout-stage">
+              <div class="seat-screen">Layar</div>
+              <div class="studio-readonly-seat-grid" style="--studio-seat-cols: {{ layout_cols }};">
+                {% for row in layout_grid %}
+                  {% for cell in row %}
+                    <span class="studio-readonly-cell{% if cell.active %} studio-readonly-cell-seat{% else %} studio-readonly-cell-empty{% endif %}">{{ cell.label }}</span>
+                  {% endfor %}
+                {% endfor %}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  {% endif %}
+</div>

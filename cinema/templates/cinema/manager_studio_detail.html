@@ -1,0 +1,14 @@
+{% extends "cinema/base.html" %}
+{% block title %}Detail Studio{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">{{ studio.name }}</h1>
+    <p class="page-subtitle">Detail studio dan layout kursi.</p>
+  </div>
+  <a class="button button-secondary" href="{% url 'cinema:manager_studios' %}">Kembali</a>
+</div>
+<div id="manager-studio-detail" class="card" hx-get="{% url 'cinema:manager_studio_detail_partial' studio.pk %}" hx-trigger="load" hx-swap="outerHTML">
+  <div class="card-body">Memuat detail studio...</div>
+</div>
+{% endblock %}

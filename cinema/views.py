@@ -8,7 +8,7 @@ from django.contrib.auth.views import LoginView, LogoutView, redirect_to_login
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db.models import Exists, OuterRef
-from django.http import JsonResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render, resolve_url
 from django.urls import reverse, reverse_lazy
 from django.utils import timezone
@@ -42,7 +42,19 @@ from .services.booking import (
 from .services.cancellation import cancel_order, print_order_tickets
 from .services.payments import apply_payment_callback
 from .services.scheduling import disable_showtime
-from .services.studios import save_studio_layout
+from .services.studios import row_label, save_studio_layout
+
+
+STUDIO_NOT_EDITABLE_MESSAGE = "Studio nonaktif tidak dapat diedit."
+STUDIO_NOT_DEACTIVABLE_MESSAGE = "Studio nonaktif tidak perlu dinonaktifkan."
+STUDIO_NOT_RESTORABLE_MESSAGE = "Studio aktif tidak perlu dipulihkan."
+
+
+def htmx_no_reswap_message(request, message):
+    messages.error(request, message)
+    response = HttpResponse("")
+    response.headers["HX-Reswap"] = "none"
+    return response
 
 
 def booking_window_dates():
@@ -852,19 +864,192 @@ class ManagerStudioListView(RoleMixin, ListView):
     model = Studio
     template_name = "cinema/manager_studios.html"
     context_object_name = "studios"
+
+    def get_queryset(self):
+        return Studio.objects.filter(is_active=True).select_related("studio_type").prefetch_related("seats")
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context.update(
+            {
+                "page_title": "Studio",
+                "page_subtitle": "Studio aktif yang dapat dipakai untuk showtime.",
+                "empty_message": "Belum ada studio aktif.",
+                "show_inactive_link": True,
+            }
+        )
+        return context
+
+
+class ManagerInactiveStudioListView(RoleMixin, ListView):
+    required_role = "manager"
+    model = Studio
+    template_name = "cinema/manager_studios.html"
+    context_object_name = "studios"
+
+    def get_queryset(self):
+        return Studio.objects.filter(is_active=False).select_related("studio_type").prefetch_related("seats")
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context.update(
+            {
+                "page_title": "Studio Nonaktif",
+                "page_subtitle": "Studio yang sedang tidak tersedia untuk penjadwalan.",
+                "empty_message": "Belum ada studio nonaktif.",
+                "show_back_to_active": True,
+            }
+        )
+        return context
+
+
+class ManagerStudioDetailView(RoleMixin, DetailView):
+    required_role = "manager"
+    model = Studio
+    template_name = "cinema/manager_studio_detail.html"
+    context_object_name = "studio"
     queryset = Studio.objects.select_related("studio_type").prefetch_related("seats")
 
 
-class ManagerStudioCreateView(RoleMixin, CreateView):
+DEFAULT_STUDIO_LAYOUT_ROWS = 10
+DEFAULT_STUDIO_LAYOUT_COLS = 15
+
+
+def build_studio_layout_rows(rows, cols, active_positions):
+    return [
+        [
+            {
+                "x": x,
+                "y": y,
+                "value": f"{y},{x}",
+                "label": f"{row_label(y)}{x + 1}",
+                "active": (y, x) in active_positions,
+            }
+            for x in range(cols)
+        ]
+        for y in range(rows)
+    ]
+
+
+def build_readonly_studio_layout(studio):
+    seats_by_position = {(seat.grid_y_pos, seat.grid_x_pos): seat for seat in studio.seats.all()}
+    return [
+        [
+            {
+                "x": x,
+                "y": y,
+                "label": seats_by_position[(y, x)].number if (y, x) in seats_by_position else "",
+                "active": (y, x) in seats_by_position,
+            }
+            for x in range(studio.grid_cols)
+        ]
+        for y in range(studio.grid_rows)
+    ]
+
+
+def parse_layout_grid(post_data):
+    positions = parse_layout_positions(post_data)
+    try:
+        rows = int(post_data.get("layout_rows", ""))
+        cols = int(post_data.get("layout_cols", ""))
+    except ValueError:
+        rows = 0
+        cols = 0
+    if rows < 1:
+        rows = max((y for y, _x in positions), default=-1) + 1
+    if cols < 1:
+        cols = max((x for _y, x in positions), default=-1) + 1
+    return rows, cols, positions
+
+
+class ManagerStudioLayoutMixin:
+    def get_layout_state(self):
+        if self.request.method == "POST":
+            rows, cols, positions = parse_layout_grid(self.request.POST)
+            return rows or DEFAULT_STUDIO_LAYOUT_ROWS, cols or DEFAULT_STUDIO_LAYOUT_COLS, positions
+        if getattr(self, "object", None) and self.object.pk:
+            positions = set(self.object.seats.values_list("grid_y_pos", "grid_x_pos"))
+            return self.object.grid_rows, self.object.grid_cols, positions
+        rows = DEFAULT_STUDIO_LAYOUT_ROWS
+        cols = DEFAULT_STUDIO_LAYOUT_COLS
+        return rows, cols, {(y, x) for y in range(rows) for x in range(cols)}
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        rows, cols, positions = self.get_layout_state()
+        context.update(
+            {
+                "layout_rows": rows,
+                "layout_cols": cols,
+                "layout_capacity": len(positions),
+                "layout_grid": build_studio_layout_rows(rows, cols, positions),
+                "studio_form_title": "Edit Studio" if getattr(self, "object", None) and self.object.pk else "Tambah Studio",
+            }
+        )
+        return context
+
+
+class ManagerStudioFormTitleMixin:
+    studio_form_title = "Studio"
+    show_layout_builder = False
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["studio_form_title"] = self.studio_form_title
+        context["show_layout_builder"] = self.show_layout_builder
+        studio = getattr(self, "object", None)
+        if studio and studio.pk and not self.show_layout_builder:
+            context.update(
+                {
+                    "layout_rows": studio.grid_rows,
+                    "layout_cols": studio.grid_cols,
+                    "layout_capacity": studio.capacity,
+                    "layout_grid": build_readonly_studio_layout(studio),
+                }
+            )
+        return context
+
+
+class ManagerStudioDetailPartialView(ManagerStudioDetailView):
+    template_name = "cinema/partials/manager_studio_detail.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        update_mode = self.request.GET.get("mode") == "update"
+        context["update_mode"] = update_mode
+        context["form"] = StudioForm(instance=self.object)
+        context.update(
+            {
+                "layout_rows": self.object.grid_rows,
+                "layout_cols": self.object.grid_cols,
+                "layout_capacity": self.object.capacity,
+                "layout_grid": build_readonly_studio_layout(self.object),
+            }
+        )
+        return context
+
+    def get(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        if request.GET.get("mode") == "update" and not self.object.is_editable:
+            return htmx_no_reswap_message(request, STUDIO_NOT_EDITABLE_MESSAGE)
+        context = self.get_context_data(object=self.object)
+        return self.render_to_response(context)
+
+
+class ManagerStudioCreateView(ManagerStudioLayoutMixin, ManagerStudioFormTitleMixin, RoleMixin, CreateView):
     required_role = "manager"
     model = Studio
     form_class = StudioForm
     template_name = "cinema/studio_form.html"
     success_url = reverse_lazy("cinema:manager_studios")
+    studio_form_title = "Tambah Studio"
+    show_layout_builder = True
 
     def form_valid(self, form):
         studio = form.save(commit=False)
-        positions = parse_layout_positions(self.request.POST)
+        rows, cols, positions = parse_layout_grid(self.request.POST)
+        studio.grid_rows = rows
+        studio.grid_cols = cols
         try:
             save_studio_layout(studio, positions)
         except ValidationError as exc:
@@ -873,32 +1058,104 @@ class ManagerStudioCreateView(RoleMixin, CreateView):
         return redirect(self.success_url)
 
 
-class ManagerStudioUpdateView(RoleMixin, UpdateView):
+class ManagerStudioUpdateView(ManagerStudioFormTitleMixin, RoleMixin, UpdateView):
     required_role = "manager"
     model = Studio
     form_class = StudioForm
     template_name = "cinema/studio_form.html"
-    success_url = reverse_lazy("cinema:manager_studios")
+    studio_form_title = "Edit Studio"
+
+    def get_queryset(self):
+        return Studio.objects.select_related("studio_type").prefetch_related("seats")
+
+    def get_success_url(self):
+        return reverse("cinema:manager_studio_detail", args=[self.object.pk])
+
+    def get(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        return redirect(self.get_success_url())
 
     def form_valid(self, form):
-        studio = form.save(commit=False)
-        positions = parse_layout_positions(self.request.POST)
-        try:
-            save_studio_layout(studio, positions)
-        except ValidationError as exc:
-            form.add_error(None, exc)
-            return self.form_invalid(form)
-        return redirect(self.success_url)
+        if not self.object.is_editable:
+            return htmx_no_reswap_message(self.request, STUDIO_NOT_EDITABLE_MESSAGE)
+        self.object = form.save()
+        if self.request.headers.get("HX-Request") == "true":
+            context = self.get_context_data(form=StudioForm(instance=self.object), update_mode=False)
+            context.update(
+                {
+                    "studio": self.object,
+                    "layout_rows": self.object.grid_rows,
+                    "layout_cols": self.object.grid_cols,
+                    "layout_capacity": self.object.capacity,
+                    "layout_grid": build_readonly_studio_layout(self.object),
+                }
+            )
+            return render(self.request, "cinema/partials/manager_studio_detail.html", context)
+        return redirect(self.get_success_url())
+
+    def form_invalid(self, form):
+        if not self.object.is_editable:
+            return htmx_no_reswap_message(self.request, STUDIO_NOT_EDITABLE_MESSAGE)
+        if self.request.headers.get("HX-Request") == "true":
+            self.object = self.get_object()
+            context = self.get_context_data(form=form, update_mode=True)
+            context.update(
+                {
+                    "studio": self.object,
+                    "layout_rows": self.object.grid_rows,
+                    "layout_cols": self.object.grid_cols,
+                    "layout_capacity": self.object.capacity,
+                    "layout_grid": build_readonly_studio_layout(self.object),
+                }
+            )
+            return render(self.request, "cinema/partials/manager_studio_detail.html", context)
+        return super().form_invalid(form)
 
 
 class ManagerStudioToggleView(RoleRequiredMixin, View):
     required_role = "manager"
 
     def post(self, request, pk):
-        studio = get_object_or_404(Studio, pk=pk)
-        studio.is_active = not studio.is_active
+        studio = get_object_or_404(Studio.objects.select_related("studio_type").prefetch_related("seats"), pk=pk)
+        if not studio.is_deactivable:
+            return htmx_no_reswap_message(request, STUDIO_NOT_DEACTIVABLE_MESSAGE)
+        studio.is_active = False
         studio.save(update_fields=["is_active"])
-        return redirect("cinema:manager_studios")
+        if request.headers.get("HX-Request") == "true":
+            context = {
+                "studio": studio,
+                "update_mode": False,
+                "form": StudioForm(instance=studio),
+                "layout_rows": studio.grid_rows,
+                "layout_cols": studio.grid_cols,
+                "layout_capacity": studio.capacity,
+                "layout_grid": build_readonly_studio_layout(studio),
+            }
+            return render(request, "cinema/partials/manager_studio_detail.html", context)
+        return redirect("cinema:manager_studio_detail", pk=studio.pk)
+
+
+class ManagerStudioRestoreView(RoleRequiredMixin, View):
+    required_role = "manager"
+
+    def post(self, request, pk):
+        studio = get_object_or_404(Studio.objects.select_related("studio_type").prefetch_related("seats"), pk=pk)
+        if not studio.is_restorable:
+            return htmx_no_reswap_message(request, STUDIO_NOT_RESTORABLE_MESSAGE)
+        studio.is_active = True
+        studio.save(update_fields=["is_active"])
+        if request.headers.get("HX-Request") == "true":
+            context = {
+                "studio": studio,
+                "update_mode": False,
+                "form": StudioForm(instance=studio),
+                "layout_rows": studio.grid_rows,
+                "layout_cols": studio.grid_cols,
+                "layout_capacity": studio.capacity,
+                "layout_grid": build_readonly_studio_layout(studio),
+            }
+            return render(request, "cinema/partials/manager_studio_detail.html", context)
+        return redirect("cinema:manager_studio_detail", pk=studio.pk)
 
 
 def parse_layout_positions(post_data):

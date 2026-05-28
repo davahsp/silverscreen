@@ -1,25 +1,146 @@
 {% extends "cinema/base.html" %}
-{% block title %}Studio{% endblock %}
+{% load static %}
+{% block title %}{{ studio_form_title }}{% endblock %}
 {% block content %}
-<div class="page-header"><div><h1 class="page-title">Studio & Layout</h1><p class="page-subtitle">Centang sel yang menjadi kursi. Nomor kursi dibuat otomatis per baris.</p></div></div>
-<div class="card">
-  <div class="card-body">
-    <form method="post">
+<div class="page-header">
+  <div>
+    <h1 class="page-title">{{ studio_form_title }}</h1>
+    <p class="page-subtitle">
+      {% if show_layout_builder %}
+        Atur nama, tipe studio, dan kursi aktif langsung dari peta kursi.
+      {% else %}
+        Atur nama dan tipe studio. Layout kursi tidak dapat diubah setelah studio dibuat.
+      {% endif %}
+    </p>
+  </div>
+  <a class="button button-secondary" href="{% url 'cinema:manager_studios' %}">Kembali</a>
+</div>
+
+<div class="card manager-detail-panel">
+  <div class="card-header">Data Studio</div>
+  <form method="post"{% if show_layout_builder %} data-studio-layout-form{% endif %}>
+    <div class="card-body">
       {% csrf_token %}
-      {{ form.as_p }}
-      <div class="form-group">
-        <label class="form-label">Layout kursi MVP</label>
-        <p class="text-muted">Untuk studio baru, pilih minimal satu sel. Untuk edit, simpan ulang akan mengganti layout.</p>
-        <div class="grid-4">
-          {% for y in "01234567" %}
-            {% for x in "0123456789" %}
-              <label class="addon-card"><input type="checkbox" name="seat_cells" value="{{ forloop.parentloop.counter0 }},{{ forloop.counter0 }}" checked> R{{ forloop.parentloop.counter }}C{{ forloop.counter }}</label>
+      {% if form.non_field_errors %}
+        <div class="form-help form-help-warning">{{ form.non_field_errors }}</div>
+      {% endif %}
+
+      <div class="studio-form-fields">
+        <div class="form-group">
+          <label class="form-label" for="{{ form.name.id_for_label }}">{{ form.name.label }}</label>
+          {{ form.name }}
+          {% for error in form.name.errors %}<div class="form-help form-help-warning">{{ error }}</div>{% endfor %}
+        </div>
+
+        <div class="form-group">
+          <span class="form-label">{{ form.studio_type.label }}</span>
+          <div class="choice-pool">
+            {% for choice in form.studio_type %}
+              <label class="choice-pool-item" for="{{ choice.id_for_label }}">
+                {{ choice.tag }}
+                <span>{{ choice.choice_label }}</span>
+              </label>
             {% endfor %}
-          {% endfor %}
+          </div>
+          {% for error in form.studio_type.errors %}<div class="form-help form-help-warning">{{ error }}</div>{% endfor %}
         </div>
       </div>
+
+      {% if show_layout_builder %}
+        <div class="form-group">
+          <span class="form-label">Seatmap</span>
+          <input type="hidden" name="layout_rows" value="{{ layout_rows }}" data-layout-rows>
+          <input type="hidden" name="layout_cols" value="{{ layout_cols }}" data-layout-cols>
+
+          <div class="studio-layout-summary" aria-live="polite">
+            <div>
+              <span class="form-label">Ukuran Studio</span>
+              <strong><span data-layout-size>{{ layout_rows }} x {{ layout_cols }}</span></strong>
+            </div>
+            <div>
+              <span class="form-label">Kapasitas</span>
+              <strong><span data-layout-capacity>{{ layout_capacity }}</span></strong>
+            </div>
+          </div>
+
+          <div class="studio-layout-builder" data-studio-layout>
+            <div class="studio-layout-top-action">
+              <button class="button button-secondary" type="button" data-add-row="start">Tambah baris atas</button>
+            </div>
+
+            <div class="studio-layout-main">
+              <button class="button button-secondary studio-layout-side-action" type="button" data-add-col="start">Tambah kolom kiri</button>
+
+              <div class="studio-layout-stage">
+                <div class="seat-screen">Layar</div>
+                <div class="studio-seat-worksheet" style="--studio-seat-cols: {{ layout_cols }};" data-seat-grid>
+                  {% for row in layout_grid %}
+                    {% if forloop.first %}
+                      <span class="studio-worksheet-corner" aria-hidden="true"></span>
+                      {% for cell in row %}
+                        <button class="studio-delete-control studio-delete-col" type="button" data-delete-col="{{ forloop.counter0 }}" title="Hapus kolom {{ forloop.counter }}" aria-label="Hapus kolom {{ forloop.counter }}">x</button>
+                      {% endfor %}
+                    {% endif %}
+                  {% endfor %}
+                  {% for row in layout_grid %}
+                    <button class="studio-delete-control studio-delete-row" type="button" data-delete-row="{{ forloop.counter0 }}" title="Hapus baris {{ forloop.counter }}" aria-label="Hapus baris {{ forloop.counter }}">x</button>
+                    {% for cell in row %}
+                      <label class="seat-choice studio-seat-choice" data-seat-cell>
+                        <input type="checkbox" name="seat_cells" value="{{ cell.value }}" data-seat-cell-input {% if cell.active %}checked{% endif %}>
+                        <span class="seat" data-seat-cell-label>{{ cell.label }}</span>
+                      </label>
+                    {% endfor %}
+                  {% endfor %}
+                </div>
+              </div>
+
+              <button class="button button-secondary studio-layout-side-action" type="button" data-add-col="end">Tambah kolom kanan</button>
+            </div>
+
+            <div class="studio-layout-bottom-action">
+              <button class="button button-secondary" type="button" data-add-row="end">Tambah baris bawah</button>
+            </div>
+          </div>
+        </div>
+      {% elif object %}
+        <div class="studio-layout-summary">
+          <div>
+            <span class="form-label">Ukuran Studio</span>
+            <strong>{{ layout_rows }} x {{ layout_cols }}</strong>
+          </div>
+          <div>
+            <span class="form-label">Kapasitas</span>
+            <strong>{{ layout_capacity }}</strong>
+          </div>
+        </div>
+        <div class="form-group">
+          <span class="form-label">Seatmap</span>
+          <div class="studio-layout-builder studio-layout-readonly">
+            <div class="studio-layout-main studio-layout-readonly-main">
+              <div class="studio-layout-stage">
+                <div class="seat-screen">Layar</div>
+                <div class="studio-readonly-seat-grid" style="--studio-seat-cols: {{ layout_cols }};">
+                  {% for row in layout_grid %}
+                    {% for cell in row %}
+                      <span class="studio-readonly-cell{% if cell.active %} studio-readonly-cell-seat{% else %} studio-readonly-cell-empty{% endif %}">{{ cell.label }}</span>
+                    {% endfor %}
+                  {% endfor %}
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="studio-layout-note">
+            Anda tidak dapat mengubah / mengatur ulang seatmap. Jika Anda salah membuat seatmap atau layout studio berubah setelah renovasi / pengembangan, Anda dapat menonaktifkan studio ini dan membuat studio baru dengan seatmap terbaru.
+          </div>
+        </div>
+      {% endif %}
+    </div>
+
+    <div class="sticky-form-actions">
       <button class="button button-primary">Simpan Studio</button>
-    </form>
-  </div>
+    </div>
+  </form>
 </div>
+
+{% if show_layout_builder %}<script src="{% static 'cinema/js/studio-layout.js' %}" defer></script>{% endif %}
 {% endblock %}

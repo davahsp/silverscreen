@@ -130,8 +130,8 @@ Manager pages support:
 
 - Movie list, create, detail shell, edit/update mode, active/inactive toggle, and main-picture upload/removal
 - Product list, create, detail shell, edit/update mode, active/inactive toggle, and square image upload/removal
-- Studio list, create, edit, active/inactive toggle
-- Studio layout creation with generated seat numbers
+- Studio list, create, metadata edit, active/inactive toggle
+- Studio layout creation with generated seat numbers; seat layouts are immutable after creation
 - Studio capacity derived from active seats
 
 Inactive movies are hidden from customer movie selection. Inactive products are hidden from booking and POS add-ons.
@@ -254,6 +254,12 @@ Manager:
 - `/manager/products/<id>/edit/`
 - `/manager/products/<id>/toggle/`
 - `/manager/studios/`
+- `/manager/studios/inactive/`
+- `/manager/studios/<id>/`
+- `/manager/studios/<id>/partial/`
+- `/manager/studios/<id>/edit/`
+- `/manager/studios/<id>/toggle/`
+- `/manager/studios/<id>/restore/`
 
 Authentication:
 
@@ -288,6 +294,8 @@ The UI follows `silverscreen-claude-design/`:
 - Manager movie rows are roomy linked rows with poster thumbnails and a separate active-status switch. The manager movie detail shell loads an HTMX partial that can self-replace between detail and update modes.
 - Manager movie create/update forms use selectable pools for age rating and theme, a sticky viewport save action, and a reusable `ImageWidget` for main-picture upload, preview, replacement, and removal.
 - Manager product catalog mirrors the movie manager workflow with roomy linked rows, square product images, an HTMX detail/update shell, selectable category pools, sticky save actions, and the reusable `ImageWidget`.
+- Manager studio rows link to a detail shell that loads an HTMX partial. Active and inactive studios have separate list pages, with the active list linking to the inactive archive and the inactive list linking back. The partial can self-replace into update mode for studio name/type metadata only while `studio.is_editable` is true; inactive update GET/POST attempts return `HX-Reswap: none` with a toast. The partial includes `Nonaktifkan` and `Pulihkan` actions guarded by `studio.is_deactivable`/`studio.is_restorable`; each posts and re-renders the detail partial with the new state, while invalid deactivate/restore attempts return `HX-Reswap: none` with a toast. The saved seat map remains fixed/read-only with size/capacity and a yellow immutability note.
+- Manager studio create forms collect the studio name normally, render studio type as decorated radio choices, and provide a 10x15 default seat-map builder where active seats are selected directly. Rows and columns are inferred from the grid, with a live size/capacity summary; managers can add rows above/below, add columns left/right, and delete individual rows or columns from controls embedded in the worksheet.
 - Booking summary cards update ticket/add-on quantities, unit prices, subtotals, and grand totals before review
 
 CSS files:
@@ -299,6 +307,7 @@ JavaScript:
 
 - `cinema/static/cinema/js/toasts.js`
 - `cinema/static/cinema/js/image-widget.js`
+- `cinema/static/cinema/js/studio-layout.js`
 - HTMX is loaded on the base template for progressive fragment swaps
 
 ## Setup
@@ -416,7 +425,6 @@ Current test coverage includes:
 
 - Authentication uses Django auth + Groups; customer pages (movies list and detail) are public, booking and role pages require login.
 - Movie main pictures use `ImageField` uploads under `MEDIA_ROOT/images/movies/main-pictures/<movie.pk>.<ext>`. Product pictures use `ImageField` uploads under `MEDIA_ROOT/images/products/pictures/<product.pk>.<ext>`. Reuploading either image removes the previous file for that record, even when the extension changes. Other picture fields remain text paths/URLs for MVP.
-- The studio layout builder is intentionally simple.
 - SQLite is used by default.
 - No real payment gateway integration exists.
 - No scanner/gate UI or API is implemented; an external scanner sharing the same DB marks tickets as `USED`.

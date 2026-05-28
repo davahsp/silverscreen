@@ -156,6 +156,18 @@ class Studio(models.Model):
             return 0
         return self.seats.filter(is_active=True).count()
 
+    @property
+    def is_editable(self):
+        return self.is_active
+
+    @property
+    def is_deactivable(self):
+        return self.is_active
+
+    @property
+    def is_restorable(self):
+        return not self.is_active
+
     def clean(self):
         errors = {}
         if self.grid_rows < 1:

@@ -6,6 +6,15 @@ from cinema.models import Seat, Studio
 ROW_LABELS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 
+def row_label(index):
+    label = ""
+    index += 1
+    while index:
+        index, remainder = divmod(index - 1, len(ROW_LABELS))
+        label = ROW_LABELS[remainder] + label
+    return label
+
+
 @transaction.atomic
 def save_studio_layout(studio, active_positions):
     if not studio.name:
@@ -24,7 +33,7 @@ def save_studio_layout(studio, active_positions):
             if (y, x) not in active_positions:
                 continue
             seat_count += 1
-            row = ROW_LABELS[y]
+            row = row_label(y)
             Seat.objects.create(
                 studio=studio,
                 number=f"{row}{seat_count}",
