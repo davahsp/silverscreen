@@ -1,0 +1,117 @@
+{% load cinema_tags %}
+<div id="manager-product-detail" class="card manager-detail-panel">
+  {% if update_mode %}
+    <div class="card-header">
+      <span>Ubah Produk</span>
+      <button
+        type="button"
+        class="button button-secondary"
+        hx-get="{% url 'cinema:manager_product_detail_partial' product.pk %}"
+        hx-target="#manager-product-detail"
+        hx-swap="outerHTML"
+      >
+        Detail
+      </button>
+    </div>
+    <form
+      method="post"
+      enctype="multipart/form-data"
+      action="{% url 'cinema:manager_product_edit' product.pk %}"
+      hx-post="{% url 'cinema:manager_product_edit' product.pk %}"
+      hx-target="#manager-product-detail"
+      hx-swap="outerHTML"
+    >
+      <div class="card-body">
+        {% csrf_token %}
+        {% if form.non_field_errors %}
+          <div class="form-help form-help-warning">{{ form.non_field_errors }}</div>
+        {% endif %}
+        <div class="manager-detail-grid">
+          {% for field in form %}
+            {% if field.name == "picture" %}
+              <div class="manager-detail-media manager-detail-media-widget manager-product-media-widget">
+                <span class="form-label">{{ field.label }}</span>
+                {{ field }}
+                {% if field.help_text %}<div class="form-help">{{ field.help_text }}</div>{% endif %}
+                {% for error in field.errors %}<div class="form-help form-help-warning">{{ error }}</div>{% endfor %}
+              </div>
+            {% endif %}
+          {% endfor %}
+          <div class="manager-detail-content">
+            <div class="manager-detail-form-fields">
+              {% for field in form %}
+                {% if field.name != "picture" %}
+                  <div class="form-group">
+                    {% if field.name == "is_active" %}
+                      <span class="form-label">{{ field.label }}</span>
+                      <label class="toggle-switch">
+                        <input class="toggle-switch-input" type="checkbox" name="{{ field.html_name }}" id="{{ field.id_for_label }}" role="switch" {% if field.value %}checked{% endif %}>
+                        <span class="toggle-switch-track"><span class="toggle-switch-thumb"></span></span>
+                        <span class="toggle-switch-text toggle-switch-text-on">Aktif</span>
+                        <span class="toggle-switch-text toggle-switch-text-off">Nonaktif</span>
+                      </label>
+                    {% elif field.name == "category" %}
+                      <span class="form-label">{{ field.label }}</span>
+                      <div class="choice-pool">
+                        {% for choice in field %}
+                          <label class="choice-pool-item" for="{{ choice.id_for_label }}">
+                            {{ choice.tag }}
+                            <span>{{ choice.choice_label }}</span>
+                          </label>
+                        {% endfor %}
+                      </div>
+                    {% else %}
+                      <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                      {{ field }}
+                    {% endif %}
+                    {% if field.help_text %}<div class="form-help">{{ field.help_text }}</div>{% endif %}
+                    {% for error in field.errors %}<div class="form-help form-help-warning">{{ error }}</div>{% endfor %}
+                  </div>
+                {% endif %}
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="sticky-form-actions">
+        <button class="button button-primary">Simpan</button>
+      </div>
+    </form>
+  {% else %}
+    <div class="card-header">
+      <span>Detail Produk</span>
+      <button
+        type="button"
+        class="button button-secondary"
+        hx-get="{% url 'cinema:manager_product_detail_partial' product.pk %}?mode=update"
+        hx-target="#manager-product-detail"
+        hx-swap="outerHTML"
+      >
+        Edit
+      </button>
+    </div>
+    <div class="card-body">
+      <div class="manager-detail-grid">
+        <div class="manager-detail-media manager-product-media">
+          {% if product.picture %}
+            <img src="{{ product.picture.url }}" alt="{{ product.name }}">
+          {% else %}
+            <div class="manager-product-picture-fallback">
+              <span>{{ product.name }}</span>
+            </div>
+          {% endif %}
+        </div>
+        <div class="manager-detail-content">
+          <div class="manager-detail-title-row">
+            <h2>{{ product.name }}</h2>
+            {% include "cinema/partials/status_badge.html" with status=product.is_active|yesno:"ACTIVE,INACTIVE" %}
+          </div>
+          <div class="manager-detail-fields">
+            <div><span>Kategori</span><strong>{{ product.get_category_display }}</strong></div>
+            <div><span>Harga</span><strong>{{ product.price|rupiah }}</strong></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  {% endif %}
+</div>

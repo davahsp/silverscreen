@@ -129,7 +129,7 @@ Blocked disable message:
 Manager pages support:
 
 - Movie list, create, detail shell, edit/update mode, active/inactive toggle, and main-picture upload/removal
-- Product list, create, edit, active/inactive toggle
+- Product list, create, detail shell, edit/update mode, active/inactive toggle, and square image upload/removal
 - Studio list, create, edit, active/inactive toggle
 - Studio layout creation with generated seat numbers
 - Studio capacity derived from active seats
@@ -248,6 +248,11 @@ Manager:
 - `/manager/movies/<id>/edit/`
 - `/manager/movies/<id>/toggle/`
 - `/manager/products/`
+- `/manager/products/new/`
+- `/manager/products/<id>/`
+- `/manager/products/<id>/partial/`
+- `/manager/products/<id>/edit/`
+- `/manager/products/<id>/toggle/`
 - `/manager/studios/`
 
 Authentication:
@@ -282,6 +287,7 @@ The UI follows `silverscreen-claude-design/`:
 - The shared order list shell at `/orders/` uses a directly rendered HTMX filter for order ID, movie name, and showtime date. The order list itself is loaded and replaced from `/orders/table/`; customers see only orders assigned to their account, while staff see all orders. `/staff/orders/` redirects to this shared endpoint.
 - Manager movie rows are roomy linked rows with poster thumbnails and a separate active-status switch. The manager movie detail shell loads an HTMX partial that can self-replace between detail and update modes.
 - Manager movie create/update forms use selectable pools for age rating and theme, a sticky viewport save action, and a reusable `ImageWidget` for main-picture upload, preview, replacement, and removal.
+- Manager product catalog mirrors the movie manager workflow with roomy linked rows, square product images, an HTMX detail/update shell, selectable category pools, sticky save actions, and the reusable `ImageWidget`.
 - Booking summary cards update ticket/add-on quantities, unit prices, subtotals, and grand totals before review
 
 CSS files:
@@ -401,11 +407,15 @@ Current test coverage includes:
 - Manager movie detail shell loads its HTMX partial, and the partial switches between detail and update modes
 - Manager movie create/update forms render selectable age-rating/theme pools and the reusable image upload widget
 - Movie main-picture uploads replace older files across extension changes and support clearing/removing the stored file
+- Manager product list rows link to the product detail shell and render square product images with an active-status switch
+- Manager product detail shell loads its HTMX partial, and the partial switches between detail and update modes
+- Manager product create/update forms render selectable category pools and the reusable image upload widget
+- Product picture uploads replace older files across extension changes and support clearing/removing the stored file
 
 ## Current Limitations
 
 - Authentication uses Django auth + Groups; customer pages (movies list and detail) are public, booking and role pages require login.
-- Movie main pictures use `ImageField` uploads under `MEDIA_ROOT/images/movies/main-pictures/<movie.pk>.<ext>`. Reuploading a movie main picture removes the previous file for that movie, even when the extension changes. Other picture fields remain text paths/URLs for MVP.
+- Movie main pictures use `ImageField` uploads under `MEDIA_ROOT/images/movies/main-pictures/<movie.pk>.<ext>`. Product pictures use `ImageField` uploads under `MEDIA_ROOT/images/products/pictures/<product.pk>.<ext>`. Reuploading either image removes the previous file for that record, even when the extension changes. Other picture fields remain text paths/URLs for MVP.
 - The studio layout builder is intentionally simple.
 - SQLite is used by default.
 - No real payment gateway integration exists.

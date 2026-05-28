@@ -10,6 +10,7 @@ from django.utils import timezone
 
 
 MOVIE_MAIN_PICTURE_DIR = "images/movies/main-pictures"
+PRODUCT_PICTURE_DIR = "images/products/pictures"
 
 
 @deconstructible
@@ -35,6 +36,23 @@ def movie_main_picture_upload_to(instance, filename):
                 movie_main_picture_storage.delete(f"{MOVIE_MAIN_PICTURE_DIR}/{existing}")
         return f"{MOVIE_MAIN_PICTURE_DIR}/{instance.pk}{extension}"
     return f"{MOVIE_MAIN_PICTURE_DIR}/pending{extension}"
+
+
+product_picture_storage = OverwriteMovieImageStorage()
+
+
+def product_picture_upload_to(instance, filename):
+    extension = Path(filename).suffix.lower() or ".jpg"
+    if instance.pk:
+        try:
+            _dirs, files = product_picture_storage.listdir(PRODUCT_PICTURE_DIR)
+        except FileNotFoundError:
+            files = []
+        for existing in files:
+            if Path(existing).stem == str(instance.pk):
+                product_picture_storage.delete(f"{PRODUCT_PICTURE_DIR}/{existing}")
+        return f"{PRODUCT_PICTURE_DIR}/{instance.pk}{extension}"
+    return f"{PRODUCT_PICTURE_DIR}/pending{extension}"
 
 
 class AgeRating(models.TextChoices):
@@ -196,6 +214,11 @@ class Product(models.Model):
     name = models.CharField(max_length=120)
     price = models.PositiveIntegerField()
     category = models.CharField(max_length=20, choices=ProductCategory.choices)
+    picture = models.ImageField(
+        upload_to=product_picture_upload_to,
+        storage=product_picture_storage,
+        blank=True,
+    )
     is_active = models.BooleanField(default=True)
 
     class Meta:

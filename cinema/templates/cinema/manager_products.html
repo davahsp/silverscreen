@@ -4,7 +4,47 @@
 {% block content %}
 <div class="page-header"><div><h1 class="page-title">Produk</h1><p class="page-subtitle">Produk aktif muncul di booking/POS.</p></div><a class="button button-primary" href="{% url 'cinema:manager_product_new' %}">Tambah Produk</a></div>
 <div class="card"><div class="table-wrapper"><table>
-  <thead><tr><th>Nama</th><th>Kategori</th><th>Harga</th><th>Status</th><th></th></tr></thead>
-  <tbody>{% for product in products %}<tr><td>{{ product.name }}</td><td>{{ product.get_category_display }}</td><td>{{ product.price|rupiah }}</td><td>{% include "cinema/partials/status_badge.html" with status=product.is_active|yesno:"ACTIVE,INACTIVE" %}</td><td><a class="button button-secondary" href="{% url 'cinema:manager_product_edit' product.pk %}">Edit</a> <form method="post" action="{% url 'cinema:manager_product_toggle' product.pk %}" style="display:inline">{% csrf_token %}<button class="button button-secondary">Toggle</button></form></td></tr>{% empty %}<tr><td colspan="5">Belum ada produk.</td></tr>{% endfor %}</tbody>
+  <thead><tr><th>Produk</th><th>Kategori</th><th>Harga</th><th>Status</th><th></th></tr></thead>
+  <tbody>
+    {% for product in products %}
+      <tr class="table-row-linkable manager-product-row">
+        <td>
+          <a class="table-row-link manager-product-link" href="{% url 'cinema:manager_product_detail' product.pk %}">
+            <span class="manager-product-thumb">
+              {% if product.picture %}
+                <img src="{{ product.picture.url }}" alt="{{ product.name }}">
+              {% else %}
+                <span class="manager-product-thumb-fallback">
+                  <span>{{ product.name }}</span>
+                </span>
+              {% endif %}
+            </span>
+            <span class="manager-movie-copy">
+              <strong>{{ product.name }}</strong>
+              <span>{{ product.get_category_display }}</span>
+            </span>
+          </a>
+        </td>
+        <td><a class="table-row-link" href="{% url 'cinema:manager_product_detail' product.pk %}">{{ product.get_category_display }}</a></td>
+        <td><a class="table-row-link" href="{% url 'cinema:manager_product_detail' product.pk %}">{{ product.price|rupiah }}</a></td>
+        <td><a class="table-row-link" href="{% url 'cinema:manager_product_detail' product.pk %}">{% include "cinema/partials/status_badge.html" with status=product.is_active|yesno:"ACTIVE,INACTIVE" %}</a></td>
+        <td>
+          <div class="manager-row-actions">
+            <form method="post" action="{% url 'cinema:manager_product_toggle' product.pk %}" class="toggle-switch-form">
+              {% csrf_token %}
+              <label class="toggle-switch">
+                <input class="toggle-switch-input" type="checkbox" role="switch" aria-label="{% if product.is_active %}Nonaktifkan{% else %}Aktifkan{% endif %} {{ product.name }}" {% if product.is_active %}checked{% endif %} onchange="this.form.submit()">
+                <span class="toggle-switch-track"><span class="toggle-switch-thumb"></span></span>
+                <span class="toggle-switch-text">{{ product.is_active|yesno:"Aktif,Nonaktif" }}</span>
+              </label>
+              <noscript><button class="button button-secondary">Simpan</button></noscript>
+            </form>
+          </div>
+        </td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="5">Belum ada produk.</td></tr>
+    {% endfor %}
+  </tbody>
 </table></div></div>
 {% endblock %}

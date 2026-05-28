@@ -80,6 +80,13 @@ body { background:var(--bg); color:var(--text-1); font:14px/1.55 var(--font); -w
 .manager-movie-copy { min-width:0; display:flex; flex-direction:column; gap:5px; }
 .manager-movie-copy strong { font-size:15px; line-height:1.2; overflow-wrap:anywhere; }
 .manager-movie-copy span { color:var(--text-3); font-size:12.5px; line-height:1.35; overflow-wrap:anywhere; }
+.manager-product-row td { padding-top:16px; padding-bottom:16px; }
+.manager-product-row .table-row-link { margin:-16px -14px; padding:16px 14px; min-height:92px; display:flex; align-items:center; }
+.manager-product-link { gap:16px; min-width:280px; }
+.manager-product-thumb { flex:0 0 64px; width:64px; aspect-ratio:1; border-radius:var(--r-sm); overflow:hidden; background:var(--bg-subtle); box-shadow:var(--sh-sm); }
+.manager-product-thumb img { display:block; width:100%; height:100%; object-fit:cover; }
+.manager-product-thumb-fallback { width:100%; height:100%; display:grid; place-items:center; padding:6px; background:var(--bg-subtle); color:var(--text-2); text-align:center; }
+.manager-product-thumb-fallback span { font-size:10px; font-weight:900; line-height:1.15; overflow-wrap:anywhere; }
 .toggle-switch-form { display:inline-flex; margin:0; }
 .toggle-switch { display:inline-flex; align-items:center; gap:8px; cursor:pointer; user-select:none; }
 .toggle-switch-input { position:absolute; opacity:0; pointer-events:none; }
@@ -123,6 +130,11 @@ body { background:var(--bg); color:var(--text-1); font:14px/1.55 var(--font); -w
 .manager-detail-media .movie-poster { min-height:auto; aspect-ratio:2/3; }
 .manager-detail-media-widget { overflow:visible; background:transparent; }
 .manager-detail-media-widget .image-widget { width:100%; min-height:100%; }
+.manager-product-media, .manager-product-media-widget { aspect-ratio:1; }
+.manager-product-media img { width:100%; height:100%; aspect-ratio:1; object-fit:cover; }
+.manager-product-media-widget .image-widget-stage { aspect-ratio:1; }
+.manager-product-picture-fallback { width:100%; height:100%; min-height:180px; display:grid; place-items:center; padding:18px; background:var(--bg-subtle); color:var(--text-2); text-align:center; }
+.manager-product-picture-fallback span { font-weight:900; overflow-wrap:anywhere; }
 .manager-detail-content { min-width:0; }
 .manager-detail-title-row { display:flex; align-items:flex-start; justify-content:space-between; gap:14px; margin-bottom:16px; }
 .manager-detail-title-row h2 { margin:0; font-size:24px; line-height:1.2; overflow-wrap:anywhere; }

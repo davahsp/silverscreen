@@ -60,10 +60,39 @@ class MovieThemeForm(forms.ModelForm):
 
 
 class ProductForm(forms.ModelForm):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["category"].choices = ProductCategory.choices
+
     class Meta:
         model = Product
-        fields = ["name", "price", "category", "is_active"]
-        widgets = {"category": forms.Select(choices=ProductCategory.choices)}
+        fields = ["name", "price", "category", "picture", "is_active"]
+        labels = {
+            "name": "Nama Produk",
+            "price": "Harga",
+            "category": "Kategori",
+            "picture": "Gambar Produk",
+            "is_active": "Status Produk",
+        }
+        widgets = {
+            "category": forms.RadioSelect(attrs={"class": "choice-pool-input"}),
+            "picture": ImageWidget(),
+        }
+
+    def save(self, commit=True):
+        old_picture = None
+        if self.instance.pk:
+            old_picture = (
+                type(self.instance)
+                .objects.filter(pk=self.instance.pk)
+                .values_list("picture", flat=True)
+                .first()
+            )
+        product = super().save(commit=commit)
+        clear_name = self.fields["picture"].widget.clear_checkbox_name("picture")
+        if commit and old_picture and clear_name in self.data and not product.picture:
+            product._meta.get_field("picture").storage.delete(old_picture)
+        return product
 
 
 class StudioTypeForm(forms.ModelForm):

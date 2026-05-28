@@ -782,8 +782,35 @@ class ManagerProductCreateView(RoleMixin, CreateView):
     required_role = "manager"
     model = Product
     form_class = ProductForm
-    template_name = "cinema/object_form.html"
+    template_name = "cinema/manager_product_form.html"
     success_url = reverse_lazy("cinema:manager_products")
+
+    def form_valid(self, form):
+        self.object = form.save(commit=False)
+        picture = form.cleaned_data.get("picture")
+        self.object.picture = None
+        self.object.save()
+        if picture:
+            self.object.picture = picture
+            self.object.save(update_fields=["picture"])
+        return redirect(self.success_url)
+
+
+class ManagerProductDetailView(RoleMixin, DetailView):
+    required_role = "manager"
+    model = Product
+    template_name = "cinema/manager_product_detail.html"
+    context_object_name = "product"
+
+
+class ManagerProductDetailPartialView(ManagerProductDetailView):
+    template_name = "cinema/partials/manager_product_detail.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["update_mode"] = self.request.GET.get("mode") == "update"
+        context["form"] = ProductForm(instance=self.object)
+        return context
 
 
 class ManagerProductUpdateView(RoleMixin, UpdateView):
@@ -791,7 +818,23 @@ class ManagerProductUpdateView(RoleMixin, UpdateView):
     model = Product
     form_class = ProductForm
     template_name = "cinema/object_form.html"
-    success_url = reverse_lazy("cinema:manager_products")
+    context_object_name = "product"
+
+    def get_success_url(self):
+        return reverse("cinema:manager_product_detail", args=[self.object.pk])
+
+    def form_valid(self, form):
+        self.object = form.save()
+        if self.request.headers.get("HX-Request") == "true":
+            context = self.get_context_data(form=ProductForm(instance=self.object), update_mode=False)
+            return render(self.request, "cinema/partials/manager_product_detail.html", context)
+        return redirect(self.get_success_url())
+
+    def form_invalid(self, form):
+        if self.request.headers.get("HX-Request") == "true":
+            context = self.get_context_data(form=form, update_mode=True)
+            return render(self.request, "cinema/partials/manager_product_detail.html", context)
+        return super().form_invalid(form)
 
 
 class ManagerProductToggleView(RoleRequiredMixin, View):

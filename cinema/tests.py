@@ -1041,6 +1041,110 @@ class AuthenticationTests(TestCase):
                 self.assertFalse(self.movie.main_picture)
                 self.assertFalse(os.path.exists(os.path.join(media_root, second_name)))
 
+    def test_manager_products_rows_link_to_detail_and_use_square_image_switch(self):
+        manager = make_role_user("product_switch_manager", "manager")
+        self.client.force_login(manager)
+        product = Product.objects.create(
+            name="Caramel Popcorn",
+            price=35000,
+            category=ProductCategory.FOOD,
+            picture="images/products/pictures/popcorn.png",
+        )
+
+        response = self.client.get(reverse("cinema:manager_products"))
+
+        self.assertContains(response, reverse("cinema:manager_product_detail", args=[product.id]))
+        self.assertContains(response, "manager-product-link")
+        self.assertContains(response, product.picture.url)
+        self.assertNotContains(response, ">Edit</a>")
+        self.assertContains(response, 'class="toggle-switch-input"')
+        self.assertContains(response, 'role="switch"')
+
+    def test_manager_product_create_uses_product_form_layout(self):
+        manager = make_role_user("product_create_manager", "manager")
+        self.client.force_login(manager)
+
+        response = self.client.get(reverse("cinema:manager_product_new"))
+
+        self.assertContains(response, "Tambah Produk")
+        self.assertContains(response, 'data-image-widget')
+        self.assertContains(response, "manager-product-media-widget")
+        self.assertContains(response, 'class="choice-pool"')
+        self.assertNotContains(response, '<select name="category"')
+        self.assertContains(response, 'type="hidden" name="is_active" value="on"')
+        self.assertNotContains(response, 'role="switch"')
+        self.assertContains(response, "sticky-form-actions")
+
+    def test_manager_product_detail_shell_and_partial_switch_modes(self):
+        manager = make_role_user("product_detail_manager", "manager")
+        self.client.force_login(manager)
+        product = Product.objects.create(name="Iced Tea", price=18000, category=ProductCategory.DRINK)
+
+        shell_response = self.client.get(reverse("cinema:manager_product_detail", args=[product.id]))
+        detail_response = self.client.get(reverse("cinema:manager_product_detail_partial", args=[product.id]))
+        update_response = self.client.get(
+            reverse("cinema:manager_product_detail_partial", args=[product.id]),
+            {"mode": "update"},
+        )
+
+        self.assertContains(shell_response, 'id="manager-product-detail"')
+        self.assertContains(shell_response, reverse("cinema:manager_product_detail_partial", args=[product.id]))
+        self.assertContains(detail_response, "?mode=update")
+        self.assertContains(update_response, reverse("cinema:manager_product_edit", args=[product.id]))
+        self.assertContains(update_response, 'hx-target="#manager-product-detail"')
+        self.assertContains(update_response, "manager-product-media-widget")
+        self.assertContains(update_response, 'class="choice-pool"')
+        self.assertNotContains(update_response, '<select name="category"')
+        self.assertContains(update_response, 'role="switch"')
+
+    def test_manager_product_picture_upload_replaces_previous_extension(self):
+        manager = make_role_user("product_upload_manager", "manager")
+        self.client.force_login(manager)
+        product = Product.objects.create(name="Nachos", price=42000, category=ProductCategory.FOOD)
+
+        with tempfile.TemporaryDirectory() as media_root:
+            with override_settings(MEDIA_ROOT=media_root):
+                form_data = {
+                    "name": product.name,
+                    "price": product.price,
+                    "category": product.category,
+                    "is_active": "on",
+                }
+                first_image = make_uploaded_image("nachos.gif", "GIF", "image/gif")
+                response = self.client.post(
+                    reverse("cinema:manager_product_edit", args=[product.id]),
+                    {**form_data, "picture": first_image},
+                )
+                self.assertRedirects(response, reverse("cinema:manager_product_detail", args=[product.id]))
+                product.refresh_from_db()
+                first_name = product.picture.name
+                self.assertTrue(first_name.endswith(f"/{product.id}.gif"))
+                self.assertTrue(os.path.exists(os.path.join(media_root, first_name)))
+
+                second_image = make_uploaded_image("nachos.png", "PNG", "image/png")
+                response = self.client.post(
+                    reverse("cinema:manager_product_edit", args=[product.id]),
+                    {**form_data, "picture": second_image},
+                )
+                self.assertRedirects(response, reverse("cinema:manager_product_detail", args=[product.id]))
+                product.refresh_from_db()
+
+                self.assertTrue(product.picture.name.endswith(f"/{product.id}.png"))
+                self.assertFalse(os.path.exists(os.path.join(media_root, first_name)))
+                self.assertTrue(os.path.exists(os.path.join(media_root, product.picture.name)))
+
+                second_name = product.picture.name
+                ignored_replacement = make_uploaded_image("ignored.gif", "GIF", "image/gif")
+                response = self.client.post(
+                    reverse("cinema:manager_product_edit", args=[product.id]),
+                    {**form_data, "picture": ignored_replacement, "picture-clear": "on"},
+                )
+                self.assertRedirects(response, reverse("cinema:manager_product_detail", args=[product.id]))
+                product.refresh_from_db()
+
+                self.assertFalse(product.picture)
+                self.assertFalse(os.path.exists(os.path.join(media_root, second_name)))
+
     def test_navigation_exact_match_wins_over_parent_sub_match(self):
         scheduler = make_role_user("nav_scheduler", "scheduler")
         self.client.force_login(scheduler)

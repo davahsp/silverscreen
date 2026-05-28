@@ -41,6 +41,12 @@ urlpatterns = [
     path("manager/movies/<int:pk>/toggle/", views.ManagerMovieToggleView.as_view(), name="manager_movie_toggle"),
     path("manager/products/", views.ManagerProductListView.as_view(), name="manager_products"),
     path("manager/products/new/", views.ManagerProductCreateView.as_view(), name="manager_product_new"),
+    path("manager/products/<int:pk>/", views.ManagerProductDetailView.as_view(), name="manager_product_detail"),
+    path(
+        "manager/products/<int:pk>/partial/",
+        views.ManagerProductDetailPartialView.as_view(),
+        name="manager_product_detail_partial",
+    ),
     path("manager/products/<int:pk>/edit/", views.ManagerProductUpdateView.as_view(), name="manager_product_edit"),
     path("manager/products/<int:pk>/toggle/", views.ManagerProductToggleView.as_view(), name="manager_product_toggle"),
     path("manager/studios/", views.ManagerStudioListView.as_view(), name="manager_studios"),
