@@ -4,6 +4,10 @@ Cinema Booking & Operational System built with Django.
 
 > Maintenance note: every commit or code change should update the relevant parts of this README when behavior, routes, setup, tests, architecture, or SDS coverage changes.
 
+## Agent Notes
+
+- Use `rg`/`rg --files` for repository searches and file discovery because it is faster than alternatives like `grep` or recursive shell listing.
+
 This repository implements the Silver Screen MVP based on the SDS and the `silverscreen-claude-design/` UI reference. The app uses Django class-based views, a service-layer pattern for business rules, Django templates, and raw CSS only.
 
 ## Product Scope

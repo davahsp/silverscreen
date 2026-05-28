@@ -434,19 +434,9 @@ class BookingPaymentView(RoleMixin, DetailView):
         return context
 
 
-class OrderAccessMixin(RoleMixin):
+class OrderListView(RoleMixin, TemplateView):
     allowed_roles = {"customer", "staff"}
-
-    def dispatch(self, request, *args, **kwargs):
-        if not request.user.is_authenticated:
-            return redirect_to_login(request.get_full_path())
-        role = user_role(request.user)
-        if role not in self.allowed_roles:
-            if role:
-                messages.error(request, "Anda tidak memiliki akses ke halaman tersebut.")
-                return redirect(default_url_for_role(role))
-            return redirect_to_login(request.get_full_path())
-        return super().dispatch(request, *args, **kwargs)
+    template_name = "cinema/orders.html"
 
     def get_order_page_context(self):
         if selected_role(self.request) == "staff":
@@ -458,10 +448,6 @@ class OrderAccessMixin(RoleMixin):
             "page_title": "Pesanan Saya",
             "page_subtitle": "Status pesanan online dan onsite Anda.",
         }
-
-
-class OrderListView(OrderAccessMixin, TemplateView):
-    template_name = "cinema/orders.html"
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -476,14 +462,16 @@ class OrderListView(OrderAccessMixin, TemplateView):
         return context
 
 
-class OrderTablePartialView(OrderAccessMixin, ListView):
+class OrderTablePartialView(RoleMixin, ListView):
+    allowed_roles = {"customer", "staff"}
     model = Order
     template_name = "cinema/partials/order_table.html"
     context_object_name = "orders"
 
     def get_queryset(self):
         queryset = Order.objects.select_related("payment", "customer").prefetch_related("tickets__showtime__movie")
-        if selected_role(self.request) == "customer":
+        role = selected_role(self.request)
+        if role == "customer":
             queryset = queryset.filter(customer=self.request.user)
 
         order_id = self.request.GET.get("order_id", "").strip()
