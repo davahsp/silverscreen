@@ -2,11 +2,13 @@ from datetime import timedelta
 
 from django.core.exceptions import ValidationError
 from django.db import transaction
+from django.utils import timezone
 
 from cinema.models import ShowTime, TicketStatus
 
 ACTIVE_SHOWTIME_TICKET_STATUSES = [TicketStatus.HELD, TicketStatus.CONFIRMED, TicketStatus.USED]
 DISABLE_BLOCK_MESSAGE = "Showtime tidak dapat dinonaktifkan karena sudah memiliki tiket aktif."
+PAST_START_MESSAGE = "Jam mulai tidak boleh lebih awal dari waktu saat ini."
 
 
 def derive_showtime_fields(movie, start_at):
@@ -32,6 +34,8 @@ def validate_showtime_window(studio, start_at, end_at, current_id=None):
 def save_showtime(*, movie, studio, start_at, price, showtime=None):
     if price < 1:
         raise ValidationError("Harga harus lebih dari 0.")
+    if start_at < timezone.now():
+        raise ValidationError(PAST_START_MESSAGE)
     duration_minutes, end_at = derive_showtime_fields(movie, start_at)
     validate_showtime_window(studio, start_at, end_at, current_id=showtime.pk if showtime else None)
     if showtime is None:

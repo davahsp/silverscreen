@@ -1,6 +1,178 @@
 {% extends "cinema/base.html" %}
-{% block title %}Showtime{% endblock %}
+{% load static cinema_tags %}
+{% block title %}Jadwalkan Showtime{% endblock %}
 {% block content %}
-<div class="page-header"><div><h1 class="page-title">Form Showtime</h1><p class="page-subtitle">Durasi dan jam selesai diturunkan dari runtime film.</p></div></div>
-<div class="card"><div class="card-body"><form method="post">{% csrf_token %}{{ form.as_p }}<button class="button button-primary">Simpan</button></form></div></div>
+{{ scheduler_wizard_data|json_script:"scheduler-wizard-data" }}
+
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Jadwalkan Showtime</h1>
+    <p class="page-subtitle">Pilih film, tanggal, lalu letakkan jadwal di timeline studio.</p>
+  </div>
+</div>
+
+<form
+  method="post"
+  class="scheduler-wizard"
+  data-showtime-wizard
+  data-confirm
+  data-confirm-mode="success"
+  data-confirm-title="Jadwalkan jam tayang?"
+  data-confirm-message="Jam tayang akan dibuat untuk slot yang dipilih. Pastikan film, studio, jam tayang, dan harga sudah benar."
+  data-confirm-yes="Jadwalkan"
+  data-confirm-no="Periksa Lagi"
+  novalidate
+>
+  {% csrf_token %}
+  <div class="scheduler-native-fields" aria-hidden="true">
+    {{ form.movie }}
+    {{ form.studio }}
+    {{ form.start_at }}
+  </div>
+
+  {% if form.non_field_errors or form.movie.errors or form.studio.errors or form.start_at.errors or form.price.errors %}
+    <div class="scheduler-error-panel">
+      <strong>Showtime belum bisa disimpan.</strong>
+      {{ form.non_field_errors }}
+      {{ form.movie.errors }}
+      {{ form.studio.errors }}
+      {{ form.start_at.errors }}
+      {{ form.price.errors }}
+    </div>
+  {% endif %}
+
+  <div class="scheduler-stepper" aria-label="Tahap penjadwalan">
+    <button type="button" class="scheduler-step is-active" data-step-target="1">
+      <span>1</span><strong>Film</strong>
+    </button>
+    <div class="scheduler-step-line"></div>
+    <button type="button" class="scheduler-step" data-step-target="2">
+      <span>2</span><strong>Tanggal</strong>
+    </button>
+    <div class="scheduler-step-line"></div>
+    <button type="button" class="scheduler-step" data-step-target="3">
+      <span>3</span><strong>Studio &amp; Waktu</strong>
+    </button>
+  </div>
+
+  <section class="scheduler-panel is-active" data-step-panel="1">
+    <div class="scheduler-panel-heading">
+      <h2>Pilih Film</h2>
+      <p>Film aktif tersedia untuk dijadwalkan.</p>
+    </div>
+    <div class="scheduler-movie-grid">
+      {% for movie in form.fields.movie.queryset %}
+        <button
+          type="button"
+          class="scheduler-movie-card{% if movie.main_picture %} has-image{% endif %}"
+          data-movie-id="{{ movie.id }}"
+          data-theme="{{ movie.movie_theme.name }}"
+        >
+          {% if movie.main_picture %}
+            <img class="scheduler-movie-card-image" src="{{ movie.main_picture.url }}" alt="">
+          {% else %}
+            <span class="scheduler-movie-card-mark" aria-hidden="true"></span>
+          {% endif %}
+          <span class="scheduler-movie-card-body">
+            <span class="scheduler-movie-theme">{{ movie.movie_theme.name }}</span>
+            <strong>{{ movie.title }}</strong>
+            <span class="scheduler-movie-meta">
+              <span>{{ movie.get_age_rating_display }}</span>
+              <span>{{ movie.runtime_minutes }} mnt</span>
+            </span>
+          </span>
+        </button>
+      {% empty %}
+        <div class="empty-state">Tidak ada film aktif yang bisa dijadwalkan.</div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="scheduler-panel" data-step-panel="2">
+    <div class="scheduler-date-layout">
+      <div>
+        <div class="scheduler-panel-heading">
+          <h2>Pilih Tanggal</h2>
+          <p>Pilih tanggal tayang untuk melihat timeline studio.</p>
+        </div>
+        <div class="scheduler-calendar">
+          <div class="scheduler-calendar-header">
+            <button type="button" class="button button-secondary" data-calendar-prev aria-label="Bulan sebelumnya">&lt;</button>
+            <strong data-calendar-title></strong>
+            <button type="button" class="button button-secondary" data-calendar-next aria-label="Bulan berikutnya">&gt;</button>
+          </div>
+          <div class="scheduler-weekdays" aria-hidden="true">
+            <span>Sen</span><span>Sel</span><span>Rab</span><span>Kam</span><span>Jum</span><span>Sab</span><span>Min</span>
+          </div>
+          <div class="scheduler-calendar-grid" data-calendar-grid></div>
+        </div>
+      </div>
+      <aside class="scheduler-selection-card">
+        <span>Film dipilih</span>
+        <div class="scheduler-selection-row">
+          <div class="scheduler-selection-media" data-selected-movie-media aria-hidden="true"></div>
+          <div>
+            <strong data-selected-movie-title>Pilih film dahulu</strong>
+            <p data-selected-movie-meta></p>
+          </div>
+          <button type="button" class="button button-secondary" data-change-step="1">Ganti</button>
+        </div>
+        <p class="scheduler-help">Tanggal yang sudah lewat tidak dapat dipilih.</p>
+      </aside>
+    </div>
+  </section>
+
+  <section class="scheduler-panel" data-step-panel="3">
+    <div class="scheduler-timeline-header">
+      <div class="scheduler-panel-heading">
+        <h2>Pilih Studio &amp; Waktu</h2>
+        <p>Klik area kosong pada timeline. Durasi otomatis mengikuti runtime film.</p>
+      </div>
+      <div class="scheduler-picks">
+        <button type="button" data-change-step="1"><strong data-chip-movie>Film</strong><span>Ganti</span></button>
+        <button type="button" data-change-step="2"><strong data-chip-date>Tanggal</strong><span>Ganti</span></button>
+      </div>
+    </div>
+
+    <div class="scheduler-timeline-card">
+      <div class="scheduler-legend">
+        <span><i class="is-booked"></i>Sudah dijadwalkan</span>
+        <span><i class="is-new"></i>Showtime baru</span>
+        <span><i class="is-conflict"></i>Konflik</span>
+      </div>
+      <div class="scheduler-danger-info" data-past-time-message hidden>
+        Jam mulai sudah lewat. Pilih slot yang masih tersedia.
+      </div>
+      <div class="scheduler-ruler">
+        <div></div>
+        <div><span>00</span><span>03</span><span>06</span><span>09</span><span>12</span><span>15</span><span>18</span><span>21</span><span>24</span></div>
+        <div></div>
+      </div>
+      <div class="scheduler-timeline-rows" data-timeline-rows></div>
+    </div>
+
+    <div class="scheduler-summary" data-scheduler-summary hidden>
+      <div class="scheduler-summary-copy">
+        <span data-summary-kicker></span>
+        <strong>
+          <span data-summary-start></span>
+          <svg class="scheduler-time-arrow" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M5 12h14"></path>
+            <path d="m13 6 6 6-6 6"></path>
+          </svg>
+          <span data-summary-end></span>
+        </strong>
+        <p data-summary-meta></p>
+        <p class="scheduler-conflict" data-summary-conflict hidden>Waktu bertabrakan dengan showtime lain. Pilih slot kosong.</p>
+      </div>
+      <div class="scheduler-price-field">
+        <label for="id_price">Harga Tiket (IDR)</label>
+        <input type="number" name="price" min="1" required id="id_price" value="{{ form.price.value|default_if_none:'' }}">
+      </div>
+      <button type="submit" class="button button-primary button-lg" data-submit-showtime>Jadwalkan</button>
+    </div>
+  </section>
+</form>
+
+<script src="{% static 'cinema/js/scheduler-showtime.js' %}" defer></script>
 {% endblock %}

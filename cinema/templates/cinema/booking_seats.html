@@ -13,14 +13,20 @@
       <div class="card-header">Layout Kursi</div>
       <div class="card-body">
         <div class="seat-screen">Layar</div>
-        <div class="seat-grid">
-          {% for seat in seats %}
-            {% with occupied=occupancy|seat_status:seat.id %}
-              <label class="seat-choice">
-                <input type="checkbox" name="seats" value="{{ seat.id }}" {% if seat.id in selected_seat_ids %}checked{% endif %} {% if occupied or not seat.is_active %}disabled{% else %}data-seat-selectable{% endif %}>
-                <span class="seat {% if occupied %}unavailable{% elif not seat.is_active %}disabled{% endif %}">{{ seat.number }}</span>
-              </label>
-            {% endwith %}
+        <div class="seat-grid seat-grid-actual" style="--studio-seat-cols: {{ showtime.studio.grid_cols }};">
+          {% for row in seat_layout %}
+            {% for cell in row %}
+              {% if cell.seat %}
+                {% with seat=cell.seat occupied=occupancy|seat_status:cell.seat.id %}
+                  <label class="seat-choice">
+                    <input type="checkbox" name="seats" value="{{ seat.id }}" {% if seat.id in selected_seat_ids %}checked{% endif %} {% if occupied or not seat.is_active %}disabled{% else %}data-seat-selectable{% endif %}>
+                    <span class="seat {% if occupied %}unavailable{% elif not seat.is_active %}disabled{% endif %}">{{ seat.number }}</span>
+                  </label>
+                {% endwith %}
+              {% else %}
+                <span class="seat-map-empty-cell" aria-hidden="true"></span>
+              {% endif %}
+            {% endfor %}
           {% endfor %}
         </div>
         <div class="seat-legend">

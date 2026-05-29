@@ -319,9 +319,11 @@ class BookingSeatsView(BookingDraftMixin, TemplateView):
         context = super().get_context_data(**kwargs)
         showtime = context["showtime"]
         unavailable = unavailable_seat_ids(showtime)
+        seats = Seat.objects.filter(studio=showtime.studio).order_by("grid_y_pos", "grid_x_pos")
         context.update(
             {
-                "seats": Seat.objects.filter(studio=showtime.studio).order_by("grid_y_pos", "grid_x_pos"),
+                "seats": seats,
+                "seat_layout": build_interactive_studio_seat_layout(showtime.studio, seats),
                 "occupancy": {seat_id: TicketStatus.HELD for seat_id in unavailable},
                 "selected_seat_ids": [int(value) for value in context["draft"].get("seat_ids", [])],
             }
@@ -596,6 +598,7 @@ class CounterPOSView(RoleMixin, TemplateView):
                 "showtimes": available_showtimes,
                 "showtime": showtime,
                 "seats": seats,
+                "seat_layout": build_interactive_studio_seat_layout(showtime.studio, seats) if showtime else [],
                 "products": Product.objects.filter(is_active=True),
                 "customers": customers,
                 "selected_customer": selected_customer,
@@ -677,6 +680,48 @@ class SchedulerShowTimeCreateView(RoleMixin, FormView):
     form_class = ShowTimeForm
     template_name = "cinema/showtime_form.html"
     success_url = reverse_lazy("cinema:scheduler_showtimes")
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        movies = Movie.objects.filter(is_active=True).select_related("movie_theme").order_by("title")
+        studios = Studio.objects.filter(is_active=True).select_related("studio_type").order_by("name")
+        showtimes = ShowTime.objects.filter(is_active=True).select_related("movie", "studio")
+        context["scheduler_wizard_data"] = {
+            "movies": [
+                {
+                    "id": movie.id,
+                    "title": movie.title,
+                    "theme": movie.movie_theme.name,
+                    "age_rating_display": movie.get_age_rating_display(),
+                    "runtime_minutes": movie.runtime_minutes,
+                    "main_picture_url": movie.main_picture.url if movie.main_picture else "",
+                }
+                for movie in movies
+            ],
+            "studios": [
+                {
+                    "id": studio.id,
+                    "name": studio.name,
+                    "studio_type": studio.studio_type.name,
+                    "base_price": studio.studio_type.base_price,
+                    "capacity": studio.capacity,
+                }
+                for studio in studios
+            ],
+            "showtimes": [
+                {
+                    "id": showtime.id,
+                    "movie_title": showtime.movie.title,
+                    "studio_id": showtime.studio_id,
+                    "start_at": timezone.localtime(showtime.start_at).isoformat(),
+                    "end_at": timezone.localtime(showtime.end_at).isoformat(),
+                }
+                for showtime in showtimes
+            ],
+            "today": timezone.localdate().isoformat(),
+            "now": timezone.localtime().isoformat(),
+        }
+        return context
 
     def form_valid(self, form):
         form.save()
@@ -951,6 +996,21 @@ def build_readonly_studio_layout(studio):
                 "y": y,
                 "label": seats_by_position[(y, x)].number if (y, x) in seats_by_position else "",
                 "active": (y, x) in seats_by_position,
+            }
+            for x in range(studio.grid_cols)
+        ]
+        for y in range(studio.grid_rows)
+    ]
+
+
+def build_interactive_studio_seat_layout(studio, seats):
+    seats_by_position = {(seat.grid_y_pos, seat.grid_x_pos): seat for seat in seats}
+    return [
+        [
+            {
+                "x": x,
+                "y": y,
+                "seat": seats_by_position.get((y, x)),
             }
             for x in range(studio.grid_cols)
         ]

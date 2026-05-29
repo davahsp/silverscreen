@@ -10,7 +10,18 @@
   <a class="button button-secondary" href="{% url 'cinema:movies' %}">Kembali</a>
 </div>
 <div class="grid-2">
-  <div class="card"><div class="movie-poster"><div><div class="movie-poster-genre">{{ movie.movie_theme.name }}</div><div class="movie-poster-title">{{ movie.title }}</div></div></div></div>
+  <div class="card">
+    <div class="movie-poster{% if movie.main_picture %} movie-poster-has-image{% endif %}">
+      {% if movie.main_picture %}
+        <img class="movie-poster-image" src="{{ movie.main_picture.url }}" alt="{{ movie.title }}">
+      {% else %}
+        <div>
+          <div class="movie-poster-genre">{{ movie.movie_theme.name }}</div>
+          <div class="movie-poster-title">{{ movie.title }}</div>
+        </div>
+      {% endif %}
+    </div>
+  </div>
   <div class="card">
     <div class="card-header">Sinopsis</div>
     <div class="card-body">{{ movie.synopsis }}</div>

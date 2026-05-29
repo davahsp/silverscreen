@@ -1,9 +1,10 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
+from django.utils import timezone
 
 from .models import AgeRating, Movie, MovieTheme, Product, ProductCategory, ShowTime, Studio, StudioType
-from .services.scheduling import derive_showtime_fields, save_showtime, validate_showtime_window
+from .services.scheduling import PAST_START_MESSAGE, derive_showtime_fields, save_showtime, validate_showtime_window
 from .widgets import ImageWidget
 
 
@@ -156,6 +157,8 @@ class ShowTimeForm(forms.Form):
         studio = cleaned.get("studio")
         start_at = cleaned.get("start_at")
         if movie and studio and start_at:
+            if start_at < timezone.now():
+                raise forms.ValidationError(PAST_START_MESSAGE)
             _duration, end_at = derive_showtime_fields(movie, start_at)
             try:
                 validate_showtime_window(studio, start_at, end_at, current_id=self.instance.pk if self.instance else None)

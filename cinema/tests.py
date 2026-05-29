@@ -399,7 +399,7 @@ class SilverScreenServiceTests(TestCase):
         today_showtime = save_showtime(
             movie=self.movie,
             studio=self.studio,
-            start_at=timezone.now(),
+            start_at=timezone.now() + timedelta(minutes=5),
             price=45000,
         )
 
@@ -501,10 +501,13 @@ class SilverScreenServiceTests(TestCase):
         )
         third_studio = Studio.objects.create(name="Studio 3", studio_type=self.studio_type, grid_rows=1, grid_cols=1)
         save_studio_layout(third_studio, {(0, 0)})
-        ended_showtime = save_showtime(
+        ended_start_at = timezone.now() - timedelta(minutes=self.movie.runtime_minutes + 5)
+        ended_showtime = ShowTime.objects.create(
             movie=self.movie,
             studio=third_studio,
-            start_at=timezone.now() - timedelta(minutes=self.movie.runtime_minutes + 5),
+            start_at=ended_start_at,
+            duration_minutes=self.movie.runtime_minutes,
+            end_at=ended_start_at + timedelta(minutes=self.movie.runtime_minutes),
             price=45000,
         )
 
@@ -541,6 +544,15 @@ class SilverScreenServiceTests(TestCase):
         create_online_order(active.id, [self.seats[0].id], [])
         with self.assertRaises(ValidationError):
             disable_showtime(active.id)
+
+    def test_showtime_save_rejects_past_start_at(self):
+        with self.assertRaisesMessage(ValidationError, "Jam mulai tidak boleh lebih awal dari waktu saat ini."):
+            save_showtime(
+                movie=self.movie,
+                studio=self.studio,
+                start_at=timezone.now() - timedelta(minutes=1),
+                price=45000,
+            )
 
     def test_used_ticket_blocks_seat_resale_and_showtime_disable(self):
         order = create_onsite_order(self.showtime.id, [self.seats[0].id], [])
@@ -601,6 +613,26 @@ class SilverScreenServiceTests(TestCase):
         self.assertContains(response, self.movie.title)
         self.assertNotContains(response, future_movie.title)
         self.assertNotContains(response, no_showtime_movie.title)
+
+    def test_movie_index_prefers_main_picture_before_fallback(self):
+        self.movie.main_picture = "images/movies/main-pictures/ruang-sunyi.jpg"
+        self.movie.save(update_fields=["main_picture"])
+
+        response = self.client.get(reverse("cinema:movies"))
+
+        self.assertContains(response, f'src="{self.movie.main_picture.url}"')
+        self.assertContains(response, 'class="movie-poster-image"')
+        self.assertNotContains(response, 'class="movie-poster-genre">Drama')
+
+    def test_movie_detail_prefers_main_picture_before_fallback(self):
+        self.movie.main_picture = "images/movies/main-pictures/ruang-sunyi.jpg"
+        self.movie.save(update_fields=["main_picture"])
+
+        response = self.client.get(reverse("cinema:movie_detail", args=[self.movie.id]))
+
+        self.assertContains(response, f'src="{self.movie.main_picture.url}"')
+        self.assertContains(response, 'class="movie-poster-image"')
+        self.assertNotContains(response, 'class="movie-poster-title">Ruang Sunyi')
 
     def test_movie_detail_paginates_showtimes_by_day_inside_booking_window(self):
         second_studio = Studio.objects.create(name="Studio 2", studio_type=self.studio_type, grid_rows=1, grid_cols=1)
@@ -1003,6 +1035,42 @@ class AuthenticationTests(TestCase):
         response = self.client.get(reverse("cinema:booking", args=[self.showtime.id]))
         self.assertEqual(response.status_code, 302)
         self.assertIn(reverse("cinema:login"), response.headers["Location"])
+
+    def test_booking_seat_map_preserves_studio_layout_gaps(self):
+        customer = make_role_user("seatmap_customer", "customer")
+        self.client.force_login(customer)
+        studio = Studio.objects.create(name="Seatmap Studio", studio_type=self.studio_type, grid_rows=2, grid_cols=3)
+        save_studio_layout(studio, {(0, 0), (0, 2), (1, 1)})
+        showtime = save_showtime(
+            movie=self.movie,
+            studio=studio,
+            start_at=timezone.now() + timedelta(days=2),
+            price=45000,
+        )
+
+        response = self.client.get(reverse("cinema:booking", args=[showtime.id]))
+
+        self.assertContains(response, 'class="seat-grid seat-grid-actual"')
+        self.assertContains(response, 'style="--studio-seat-cols: 3;"')
+        self.assertContains(response, 'class="seat-map-empty-cell"', count=3)
+
+    def test_pos_seat_map_preserves_studio_layout_gaps(self):
+        staff = make_role_user("seatmap_staff", "staff")
+        self.client.force_login(staff)
+        studio = Studio.objects.create(name="POS Seatmap Studio", studio_type=self.studio_type, grid_rows=2, grid_cols=3)
+        save_studio_layout(studio, {(0, 0), (0, 2), (1, 1)})
+        showtime = save_showtime(
+            movie=self.movie,
+            studio=studio,
+            start_at=timezone.now() + timedelta(minutes=5),
+            price=45000,
+        )
+
+        response = self.client.get(reverse("cinema:counter_pos"), {"showtime": showtime.id})
+
+        self.assertContains(response, 'class="seat-grid seat-grid-actual"')
+        self.assertContains(response, 'style="--studio-seat-cols: 3;"')
+        self.assertContains(response, 'class="seat-map-empty-cell"', count=3)
 
     def test_navigation_marks_exact_customer_target_active(self):
         customer = make_role_user("nav_customer", "customer")
@@ -1586,7 +1654,7 @@ class AuthenticationTests(TestCase):
         self.assertEqual(response.headers["HX-Reswap"], "none")
         self.assertIn("Studio aktif tidak perlu dipulihkan.", response.headers["HX-Trigger"])
 
-    def test_navigation_exact_match_wins_over_parent_sub_match(self):
+    def test_scheduler_create_view_marks_jadwalkan_navigation_active(self):
         scheduler = make_role_user("nav_scheduler", "scheduler")
         self.client.force_login(scheduler)
 
@@ -1594,6 +1662,71 @@ class AuthenticationTests(TestCase):
 
         active_items = [item["label"] for item in response.context["navigation_items"] if item["active"]]
         self.assertEqual(active_items, ["Jadwalkan"])
+        self.assertEqual(
+            [item["label"] for item in response.context["navigation_items"]],
+            ["Daftar Showtime", "Jadwalkan", "Stub Gateway"],
+        )
+
+    def test_scheduler_showtime_create_uses_phased_visual_wizard(self):
+        scheduler = make_role_user("wizard_scheduler", "scheduler")
+        self.client.force_login(scheduler)
+        self.movie.main_picture = "images/movies/main-pictures/ruang-sunyi.jpg"
+        self.movie.save(update_fields=["main_picture"])
+
+        response = self.client.get(reverse("cinema:scheduler_showtime_new"))
+
+        self.assertContains(response, 'data-showtime-wizard')
+        self.assertContains(response, 'data-confirm-mode="success"')
+        self.assertContains(response, 'data-confirm-title="Jadwalkan jam tayang?"')
+        self.assertContains(response, 'data-confirm-yes="Jadwalkan"')
+        self.assertContains(response, 'id="scheduler-wizard-data"')
+        self.assertContains(response, 'data-step-panel="1"')
+        self.assertContains(response, 'data-step-panel="2"')
+        self.assertContains(response, 'data-step-panel="3"')
+        self.assertContains(response, 'data-past-time-message')
+        self.assertContains(response, 'data-selected-movie-media')
+        self.assertContains(response, 'class="scheduler-movie-card has-image"')
+        self.assertContains(response, self.movie.main_picture.url)
+        self.assertContains(response, self.movie.get_age_rating_display())
+        self.assertContains(response, "Ruang Sunyi")
+        self.assertContains(response, "Studio 1")
+        self.assertContains(response, "scheduler-showtime.js")
+
+    def test_scheduler_showtime_wizard_posts_to_existing_create_flow(self):
+        scheduler = make_role_user("wizard_post_scheduler", "scheduler")
+        self.client.force_login(scheduler)
+        start_at = timezone.localtime(self.showtime.end_at + timedelta(hours=1)).strftime("%Y-%m-%dT%H:%M")
+
+        response = self.client.post(
+            reverse("cinema:scheduler_showtime_new"),
+            {
+                "movie": self.movie.id,
+                "studio": self.studio.id,
+                "start_at": start_at,
+                "price": 50000,
+            },
+        )
+
+        self.assertRedirects(response, reverse("cinema:scheduler_showtimes"))
+        self.assertTrue(ShowTime.objects.filter(movie=self.movie, studio=self.studio, price=50000).exists())
+
+    def test_scheduler_showtime_create_rejects_past_start_at(self):
+        scheduler = make_role_user("wizard_past_scheduler", "scheduler")
+        self.client.force_login(scheduler)
+        start_at = timezone.localtime(timezone.now() - timedelta(hours=1)).strftime("%Y-%m-%dT%H:%M")
+
+        response = self.client.post(
+            reverse("cinema:scheduler_showtime_new"),
+            {
+                "movie": self.movie.id,
+                "studio": self.studio.id,
+                "start_at": start_at,
+                "price": 50000,
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Jam mulai tidak boleh lebih awal dari waktu saat ini.")
 
     def test_login_redirects_customer_to_movies(self):
         make_role_user("alice", "customer")

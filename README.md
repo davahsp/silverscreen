@@ -121,6 +121,7 @@ The scanner/gate application is outside this Django app. It is expected to share
 ### Showtime Management
 
 Scheduler can create showtimes. `duration_minutes` and `end_at` are derived from the selected movie runtime.
+Showtime creation blocks start times earlier than the current server time; the visual scheduler shades today's past timeline range and ignores clicks inside it.
 
 Showtime disable is blocked if active tickets exist with status:
 
@@ -279,6 +280,7 @@ Authentication:
 Temporary stub navigation:
 
 - `/stub/payment-gateway/` is linked from every authenticated role navigation for demo access.
+- Scheduler navigation links to both `/scheduler/showtimes/` and `/scheduler/showtimes/new/`.
 
 ## UI Implementation
 
@@ -293,10 +295,11 @@ The UI follows `silverscreen-claude-design/`:
 - HTMX progressively enhances date-based jam tayang pagination on movie detail pages
 - Topbar with role switcher and reusable movie-ticket SVG mark
 - Role-aware horizontal navigation with centralized active-state inference
-- Customer movie cards use full-card navigation with hover/focus ticket call-to-action footers
+- Customer movie cards and movie detail pages display uploaded movie main pictures first, then fall back to the generated title/genre poster when no image is stored; cards use full-card navigation with hover/focus ticket call-to-action footers
 - Movie detail jam tayang is paginated by date across the shared 14-day booking window; the date filter stays statically rendered and HTMX uses `hx-include` to refresh only the list area
 - Mobile bottom navigation behavior
 - Cards, tables, forms, status badges, seat grid with state legend, POS layout, ticket preview, and gateway page styling
+- Customer booking and Staff POS seat maps preserve the studio layout grid from studio creation/detail, including empty aisle/gap cells.
 - Staff POS starts with an unselected horizontal showtime carousel limited to active movies with active showtimes today whose `end_at` is still in the future. Choosing a showtime fetches only the seat-map form partial with HTMX; seat selection is capped by `Order.MAX_TICKETS`, the summary stays on the right, add-ons sit below the seat/summary area, and the submit action stays fixed at the viewport bottom.
 - Staff POS includes an optional searchable customer selector so onsite orders can be attached to a customer account or left as walk-in orders.
 - The shared order list shell at `/orders/` uses a directly rendered HTMX filter for order ID, movie name, and showtime date. The order list itself is loaded and replaced from `/orders/table/`; customers see only orders assigned to their account, while staff see all orders. `/staff/orders/` redirects to this shared endpoint.
@@ -305,6 +308,7 @@ The UI follows `silverscreen-claude-design/`:
 - Manager product catalog mirrors the movie manager workflow with roomy linked rows, square product images, an HTMX detail/update shell, selectable category pools, sticky save actions, and the reusable `ImageWidget`.
 - Manager studio rows link to a detail shell that loads an HTMX partial. Active and inactive studios have separate list pages, with the active list linking to the inactive archive and the inactive list linking back. The partial can self-replace into update mode for studio name/type metadata only while `studio.is_editable` is true; inactive update GET/POST attempts return `HX-Reswap: none` with a toast. The partial includes `Nonaktifkan` and `Pulihkan` actions guarded by `studio.is_deactivable`/`studio.is_restorable`; each posts and re-renders the detail partial with the new state, while invalid deactivate/restore attempts return `HX-Reswap: none` with a toast. The saved seat map remains fixed/read-only with size/capacity and a yellow immutability note.
 - Manager studio create forms collect the studio name normally, render studio type as decorated radio choices, and provide a 10x15 default seat-map builder where active seats are selected directly. Rows and columns are inferred from the grid, with a live size/capacity summary; managers can add rows above/below, add columns left/right, and delete individual rows or columns from controls embedded in the worksheet.
+- Scheduler showtime creation is a three-phase visual wizard matching the design handoff: film selection, date calendar, and studio/time selection on a 24-hour timeline. The wizard writes to the existing Django form fields and server-side overlap validation remains authoritative.
 - Booking summary cards update ticket/add-on quantities, unit prices, subtotals, and grand totals before review
 
 CSS files:
@@ -316,6 +320,7 @@ JavaScript:
 
 - `cinema/static/cinema/js/toasts.js`
 - `cinema/static/cinema/js/image-widget.js`
+- `cinema/static/cinema/js/scheduler-showtime.js`
 - `cinema/static/cinema/js/studio-layout.js`
 - HTMX is loaded on the base template for progressive fragment swaps
 
@@ -412,6 +417,7 @@ Current test coverage includes:
 - Zero-seat studio validation
 - Inactive movie/product filtering
 - Customer movie filtering by active showtimes in the 14-day booking window
+- Customer movie list/detail main-picture display before generated poster fallback
 - Movie detail day-based showtime pagination
 - HTMX movie detail jam tayang list replacement
 - Multi-phase booking with ticket count inferred from selected seats
@@ -419,9 +425,11 @@ Current test coverage includes:
 - Booking add-ons visibility
 - Public movies/movie-detail browsing
 - Login required for booking
+- Customer booking and Staff POS seat maps preserve configured studio layout gaps
 - Role-aware login redirect (customer/staff/scheduler/manager)
 - Cross-role access is redirected to the user's home
 - RoleRequiredMixin accepts a single allowed role or multiple allowed roles
+- Scheduler showtime create renders the phased visual wizard and posts through the existing create flow
 - Customer self-signup creates a user in the `customer` group and redirects to the login page
 - Logout returns to the login page
 - Manager movie list rows link to the movie detail shell and render poster thumbnails with an active-status switch
