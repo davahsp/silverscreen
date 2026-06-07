@@ -42,7 +42,6 @@ from .services.booking import (
 )
 from .services.cancellation import cancel_order, print_order_tickets
 from .services.payments import apply_payment_callback
-from .services.scheduling import disable_showtime
 from .services.studios import row_label, save_studio_layout
 
 
@@ -626,7 +625,7 @@ class CounterPOSView(RoleMixin, TemplateView):
         try:
             showtime_id = int(request.POST["showtime"])
             if not counter_pos_showtimes().filter(pk=showtime_id).exists():
-                raise ValidationError("Showtime tidak tersedia untuk penjualan counter.")
+                raise ValidationError("Jam tayang tidak tersedia untuk penjualan counter.")
             seat_ids = [int(value) for value in request.POST.getlist("seats")]
             order = create_onsite_order(
                 showtime_id,
@@ -673,6 +672,32 @@ class SchedulerShowTimeListView(RoleMixin, ListView):
     template_name = "cinema/scheduler_showtimes.html"
     context_object_name = "showtimes"
     queryset = ShowTime.objects.select_related("movie", "studio", "studio__studio_type")
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        now = timezone.now()
+        showtimes = list(context["showtimes"])
+        ongoing = [showtime for showtime in showtimes if showtime.start_at <= now <= showtime.end_at]
+        scheduled = [showtime for showtime in showtimes if now < showtime.start_at]
+        ended = [showtime for showtime in showtimes if showtime.end_at < now]
+        context["showtime_tabs"] = [
+            {
+                "id": "ongoing",
+                "label": "Sedang Berlangsung",
+                "showtimes": sorted(ongoing, key=lambda item: item.end_at),
+            },
+            {
+                "id": "scheduled",
+                "label": "Terjadwal",
+                "showtimes": sorted(scheduled, key=lambda item: item.start_at),
+            },
+            {
+                "id": "ended",
+                "label": "Selesai",
+                "showtimes": sorted(ended, key=lambda item: item.end_at, reverse=True),
+            },
+        ]
+        return context
 
 
 class SchedulerShowTimeCreateView(RoleMixin, FormView):
@@ -725,20 +750,8 @@ class SchedulerShowTimeCreateView(RoleMixin, FormView):
 
     def form_valid(self, form):
         form.save()
-        messages.success(self.request, "Showtime dibuat.")
+        messages.success(self.request, "Jam tayang dibuat.")
         return super().form_valid(form)
-
-
-class SchedulerShowTimeDisableView(RoleRequiredMixin, View):
-    allowed_roles = "scheduler"
-
-    def post(self, request, pk):
-        try:
-            disable_showtime(pk)
-            messages.success(request, "Showtime dinonaktifkan.")
-        except ValidationError as exc:
-            messages.error(request, "; ".join(exc.messages))
-        return redirect("cinema:scheduler_showtimes")
 
 
 class ManagerDashboardView(RoleMixin, TemplateView):
@@ -929,7 +942,7 @@ class ManagerStudioListView(RoleMixin, ListView):
         context.update(
             {
                 "page_title": "Studio",
-                "page_subtitle": "Studio aktif yang dapat dipakai untuk showtime.",
+                "page_subtitle": "Studio aktif yang dapat dipakai untuk jam tayang.",
                 "empty_message": "Belum ada studio aktif.",
                 "show_inactive_link": True,
             }

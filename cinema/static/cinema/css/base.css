@@ -193,6 +193,22 @@ td { padding:12px 14px; border-bottom:1px solid var(--border-lt); vertical-align
 .table-row-link { display:block; margin:-12px -14px; padding:12px 14px; color:inherit; text-decoration:none; }
 .table-row-linkable:hover { background:var(--bg-subtle); }
 .table-row-linkable:focus-within { outline:2px solid var(--gold); outline-offset:-2px; }
+.scheduler-showtime-tabs { display:grid; }
+.scheduler-showtime-tab-input { position:absolute; opacity:0; pointer-events:none; }
+.scheduler-showtime-tab-list { display:flex; gap:4px; padding:10px 10px 0; border-bottom:1px solid var(--border-lt); overflow-x:auto; background:var(--bg-subtle); }
+.scheduler-showtime-tab-label { flex:0 0 auto; min-width:156px; display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 12px; border:1px solid transparent; border-bottom:0; border-radius:var(--r-sm) var(--r-sm) 0 0; color:var(--text-3); cursor:pointer; font-weight:900; }
+.scheduler-showtime-tab-label span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.scheduler-showtime-tab-label strong { min-width:26px; min-height:22px; display:grid; place-items:center; padding:2px 7px; border-radius:999px; background:#fff; color:var(--text-2); font-size:12px; }
+.scheduler-showtime-tab-panel { display:none; }
+#scheduler-showtime-tab-ongoing:checked ~ .scheduler-showtime-tab-list label[for="scheduler-showtime-tab-ongoing"],
+#scheduler-showtime-tab-scheduled:checked ~ .scheduler-showtime-tab-list label[for="scheduler-showtime-tab-scheduled"],
+#scheduler-showtime-tab-ended:checked ~ .scheduler-showtime-tab-list label[for="scheduler-showtime-tab-ended"] { border-color:var(--border-lt); background:#fff; color:var(--red); }
+#scheduler-showtime-tab-ongoing:focus-visible ~ .scheduler-showtime-tab-list label[for="scheduler-showtime-tab-ongoing"],
+#scheduler-showtime-tab-scheduled:focus-visible ~ .scheduler-showtime-tab-list label[for="scheduler-showtime-tab-scheduled"],
+#scheduler-showtime-tab-ended:focus-visible ~ .scheduler-showtime-tab-list label[for="scheduler-showtime-tab-ended"] { outline:3px solid rgba(159,29,46,.18); outline-offset:-3px; }
+#scheduler-showtime-tab-ongoing:checked ~ .scheduler-showtime-tab-panel-ongoing,
+#scheduler-showtime-tab-scheduled:checked ~ .scheduler-showtime-tab-panel-scheduled,
+#scheduler-showtime-tab-ended:checked ~ .scheduler-showtime-tab-panel-ended { display:block; }
 .status-badge { display:inline-flex; align-items:center; gap:5px; border-radius:999px; padding:3px 9px; font-size:11.5px; font-weight:900; white-space:nowrap; }
 .status-badge::before { content:""; width:5px; height:5px; border-radius:50%; background:currentColor; }
 .badge-pending,.badge-held,.badge-unpaid,.badge-waiting_payment { background:var(--s-amber-bg); color:var(--s-amber); }

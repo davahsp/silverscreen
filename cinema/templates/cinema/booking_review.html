@@ -11,7 +11,7 @@
     <div class="card-header">Detail</div>
     <div class="card-body">
       <div class="order-summary-row"><span>Film</span><strong>{{ showtime.movie.title }}</strong></div>
-      <div class="order-summary-row"><span>Showtime</span><strong>{{ showtime.start_at|date:"d M Y H:i" }}</strong></div>
+      <div class="order-summary-row"><span>Jam tayang</span><strong>{{ showtime.start_at|date:"d M Y H:i" }}</strong></div>
       <div class="order-summary-row"><span>Kursi</span><strong>{% for seat in selected_seats %}{{ seat.number }}{% if not forloop.last %}, {% endif %}{% endfor %}</strong></div>
       <div class="order-summary-row"><span>Subtotal tiket</span><strong>{{ ticket_subtotal|rupiah }}</strong></div>
       {% for line in addon_lines %}

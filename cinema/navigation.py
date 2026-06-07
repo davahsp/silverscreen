@@ -28,7 +28,7 @@ ROLE_NAVIGATION = {
         {"label": "Stub Gateway", "target": "stub_gateway:payments"},
     ],
     "scheduler": [
-        {"label": "Daftar Showtime", "target": "cinema:scheduler_showtimes"},
+        {"label": "Daftar Jam Tayang", "target": "cinema:scheduler_showtimes"},
         {"label": "Jadwalkan", "target": "cinema:scheduler_showtime_new"},
         {"label": "Stub Gateway", "target": "stub_gateway:payments"},
     ],

@@ -27,7 +27,6 @@ urlpatterns = [
     path("staff/orders/", views.OrderLookupView.as_view(), name="order_lookup"),
     path("scheduler/showtimes/", views.SchedulerShowTimeListView.as_view(), name="scheduler_showtimes"),
     path("scheduler/showtimes/new/", views.SchedulerShowTimeCreateView.as_view(), name="scheduler_showtime_new"),
-    path("scheduler/showtimes/<int:pk>/disable/", views.SchedulerShowTimeDisableView.as_view(), name="scheduler_showtime_disable"),
     path("manager/", views.ManagerDashboardView.as_view(), name="manager_dashboard"),
     path("manager/movies/", views.ManagerMovieListView.as_view(), name="manager_movies"),
     path("manager/movies/new/", views.ManagerMovieCreateView.as_view(), name="manager_movie_new"),

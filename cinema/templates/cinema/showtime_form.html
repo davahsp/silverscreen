@@ -1,12 +1,12 @@
 {% extends "cinema/base.html" %}
 {% load static cinema_tags %}
-{% block title %}Jadwalkan Showtime{% endblock %}
+{% block title %}Jadwalkan Jam Tayang{% endblock %}
 {% block content %}
 {{ scheduler_wizard_data|json_script:"scheduler-wizard-data" }}
 
 <div class="page-header">
   <div>
-    <h1 class="page-title">Jadwalkan Showtime</h1>
+    <h1 class="page-title">Jadwalkan Jam Tayang</h1>
     <p class="page-subtitle">Pilih film, tanggal, lalu letakkan jadwal di timeline studio.</p>
   </div>
 </div>
@@ -32,7 +32,7 @@
 
   {% if form.non_field_errors or form.movie.errors or form.studio.errors or form.start_at.errors or form.price.errors %}
     <div class="scheduler-error-panel">
-      <strong>Showtime belum bisa disimpan.</strong>
+      <strong>Jam tayang belum bisa disimpan.</strong>
       {{ form.non_field_errors }}
       {{ form.movie.errors }}
       {{ form.studio.errors }}
@@ -137,7 +137,7 @@
     <div class="scheduler-timeline-card">
       <div class="scheduler-legend">
         <span><i class="is-booked"></i>Sudah dijadwalkan</span>
-        <span><i class="is-new"></i>Showtime baru</span>
+        <span><i class="is-new"></i>Jam tayang baru</span>
         <span><i class="is-conflict"></i>Konflik</span>
       </div>
       <div class="scheduler-danger-info" data-past-time-message hidden>
@@ -163,7 +163,7 @@
           <span data-summary-end></span>
         </strong>
         <p data-summary-meta></p>
-        <p class="scheduler-conflict" data-summary-conflict hidden>Waktu bertabrakan dengan showtime lain. Pilih slot kosong.</p>
+        <p class="scheduler-conflict" data-summary-conflict hidden>Waktu bertabrakan dengan jam tayang lain. Pilih slot kosong.</p>
       </div>
       <div class="scheduler-price-field">
         <label for="id_price">Harga Tiket (IDR)</label>

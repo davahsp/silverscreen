@@ -4,10 +4,7 @@ from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.utils import timezone
 
-from cinema.models import ShowTime, TicketStatus
-
-ACTIVE_SHOWTIME_TICKET_STATUSES = [TicketStatus.HELD, TicketStatus.CONFIRMED, TicketStatus.USED]
-DISABLE_BLOCK_MESSAGE = "Showtime tidak dapat dinonaktifkan karena sudah memiliki tiket aktif."
+from cinema.models import ShowTime
 PAST_START_MESSAGE = "Jam mulai tidak boleh lebih awal dari waktu saat ini."
 
 
@@ -27,7 +24,7 @@ def validate_showtime_window(studio, start_at, end_at, current_id=None):
     if current_id:
         overlaps = overlaps.exclude(pk=current_id)
     if overlaps.exists():
-        raise ValidationError("Studio sudah memiliki showtime aktif pada rentang waktu ini.")
+        raise ValidationError("Studio sudah memiliki jam tayang aktif pada rentang waktu ini.")
 
 
 @transaction.atomic
@@ -48,14 +45,4 @@ def save_showtime(*, movie, studio, start_at, price, showtime=None):
     showtime.price = price
     showtime.is_active = True
     showtime.save()
-    return showtime
-
-
-@transaction.atomic
-def disable_showtime(showtime_id):
-    showtime = ShowTime.objects.select_for_update().get(id=showtime_id)
-    if showtime.tickets.filter(status__in=ACTIVE_SHOWTIME_TICKET_STATUSES).exists():
-        raise ValidationError(DISABLE_BLOCK_MESSAGE)
-    showtime.is_active = False
-    showtime.save(update_fields=["is_active"])
     return showtime

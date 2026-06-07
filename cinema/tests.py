@@ -12,7 +12,7 @@ from django.contrib.messages.storage.base import Message
 from django.contrib.messages import constants as message_constants
 from django.test import RequestFactory, TestCase, override_settings
 from django.http import HttpResponse
-from django.urls import reverse
+from django.urls import NoReverseMatch, reverse
 from django.utils import timezone
 from django.views import View
 from PIL import Image
@@ -38,7 +38,7 @@ from cinema.models import (
 from cinema.services.booking import create_online_order, create_onsite_order
 from cinema.services.cancellation import USED_CANCEL_MESSAGE, cancel_order, print_order_tickets
 from cinema.services.payments import apply_payment_callback
-from cinema.services.scheduling import disable_showtime, save_showtime
+from cinema.services.scheduling import save_showtime
 from cinema.services.studios import save_studio_layout
 from cinema.views import RoleRequiredMixin
 from stub_payment_gateway.management.commands.expire_gateway_payments import expire_due_gateway_payments
@@ -528,22 +528,9 @@ class SilverScreenServiceTests(TestCase):
         self.assertEqual(ticket.status, TicketStatus.CONFIRMED)
         self.assertEqual(ticket.qr_identifier, qr_identifier)
 
-    def test_showtime_end_at_and_disable_rules(self):
+    def test_showtime_end_at_is_derived_from_movie_runtime(self):
         self.assertEqual(self.showtime.duration_minutes, self.movie.runtime_minutes)
         self.assertEqual(self.showtime.end_at, self.showtime.start_at + timedelta(minutes=self.movie.runtime_minutes))
-        disable_showtime(self.showtime.id)
-        self.showtime.refresh_from_db()
-        self.assertFalse(self.showtime.is_active)
-
-        active = save_showtime(
-            movie=self.movie,
-            studio=self.studio,
-            start_at=self.showtime.end_at + timedelta(hours=1),
-            price=45000,
-        )
-        create_online_order(active.id, [self.seats[0].id], [])
-        with self.assertRaises(ValidationError):
-            disable_showtime(active.id)
 
     def test_showtime_save_rejects_past_start_at(self):
         with self.assertRaisesMessage(ValidationError, "Jam mulai tidak boleh lebih awal dari waktu saat ini."):
@@ -554,7 +541,7 @@ class SilverScreenServiceTests(TestCase):
                 price=45000,
             )
 
-    def test_used_ticket_blocks_seat_resale_and_showtime_disable(self):
+    def test_used_ticket_blocks_seat_resale(self):
         order = create_onsite_order(self.showtime.id, [self.seats[0].id], [])
         ticket = order.tickets.get()
         ticket.status = TicketStatus.USED
@@ -562,8 +549,6 @@ class SilverScreenServiceTests(TestCase):
 
         with self.assertRaises(ValidationError):
             create_online_order(self.showtime.id, [self.seats[0].id], [])
-        with self.assertRaises(ValidationError):
-            disable_showtime(self.showtime.id)
 
     def test_studio_capacity_and_zero_seat_validation(self):
         self.assertEqual(self.studio.capacity, 3)
@@ -1664,8 +1649,72 @@ class AuthenticationTests(TestCase):
         self.assertEqual(active_items, ["Jadwalkan"])
         self.assertEqual(
             [item["label"] for item in response.context["navigation_items"]],
-            ["Daftar Showtime", "Jadwalkan", "Stub Gateway"],
+            ["Daftar Jam Tayang", "Jadwalkan", "Stub Gateway"],
         )
+
+    def test_scheduler_showtime_list_has_no_deactivate_workflow(self):
+        scheduler = make_role_user("showtime_list_scheduler", "scheduler")
+        self.client.force_login(scheduler)
+
+        response = self.client.get(reverse("cinema:scheduler_showtimes"))
+
+        self.assertContains(response, "Daftar Jam Tayang")
+        self.assertContains(response, "Ruang Sunyi")
+        self.assertNotContains(response, "Nonaktifkan")
+        self.assertNotContains(response, "scheduler_showtime_disable")
+        with self.assertRaises(NoReverseMatch):
+            reverse("cinema:scheduler_showtime_disable", args=[self.showtime.id])
+
+    def test_scheduler_showtime_list_groups_rows_into_status_tabs(self):
+        scheduler = make_role_user("showtime_tabs_scheduler", "scheduler")
+        self.client.force_login(scheduler)
+        now = timezone.now()
+        ongoing_movie = Movie.objects.create(
+            title="Film Sedang Tayang",
+            synopsis="Sedang berjalan.",
+            age_rating=AgeRating.R13,
+            runtime_minutes=90,
+            movie_theme=self.movie.movie_theme,
+        )
+        ended_movie = Movie.objects.create(
+            title="Film Selesai",
+            synopsis="Sudah selesai.",
+            age_rating=AgeRating.R13,
+            runtime_minutes=90,
+            movie_theme=self.movie.movie_theme,
+        )
+        ongoing = ShowTime.objects.create(
+            movie=ongoing_movie,
+            studio=self.studio,
+            start_at=now - timedelta(minutes=30),
+            duration_minutes=90,
+            end_at=now + timedelta(minutes=60),
+            price=45000,
+        )
+        ended = ShowTime.objects.create(
+            movie=ended_movie,
+            studio=self.studio,
+            start_at=now - timedelta(hours=3),
+            duration_minutes=90,
+            end_at=now - timedelta(hours=1),
+            price=45000,
+        )
+
+        response = self.client.get(reverse("cinema:scheduler_showtimes"))
+
+        tabs = response.context["showtime_tabs"]
+        self.assertEqual([tab["id"] for tab in tabs], ["ongoing", "scheduled", "ended"])
+        self.assertEqual(tabs[0]["label"], "Sedang Berlangsung")
+        self.assertEqual(tabs[1]["label"], "Terjadwal")
+        self.assertEqual(tabs[2]["label"], "Selesai")
+        self.assertEqual([item.id for item in tabs[0]["showtimes"]], [ongoing.id])
+        self.assertIn(self.showtime.id, [item.id for item in tabs[1]["showtimes"]])
+        self.assertEqual([item.id for item in tabs[2]["showtimes"]], [ended.id])
+        self.assertContains(response, 'id="scheduler-showtime-tab-ongoing"')
+        self.assertContains(response, 'id="scheduler-showtime-tab-scheduled"')
+        self.assertContains(response, 'id="scheduler-showtime-tab-ended"')
+        self.assertContains(response, "Film Sedang Tayang")
+        self.assertContains(response, "Film Selesai")
 
     def test_scheduler_showtime_create_uses_phased_visual_wizard(self):
         scheduler = make_role_user("wizard_scheduler", "scheduler")

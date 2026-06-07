@@ -12,7 +12,7 @@
 <form method="post" class="pos-form" data-pos-form data-confirm data-confirm-mode="default" data-confirm-title="Buat order?" data-confirm-message="Order akan dibuat dan tiket dibuka untuk kursi yang dipilih. Pastikan pesanan sudah benar." data-confirm-yes="Buat Order" data-confirm-no="Periksa Lagi">
   {% csrf_token %}
   <div class="card mb-4">
-    <div class="card-header">Showtime</div>
+    <div class="card-header">Jam Tayang</div>
     <div class="card-body">
       <div class="form-group pos-customer-combobox" data-customer-combobox>
         <label class="form-label" for="pos-customer">Pelanggan (opsional)</label>
@@ -72,7 +72,7 @@
             </span>
           </label>
         {% empty %}
-          <p class="text-muted">Tidak ada showtime hari ini yang masih berlangsung atau belum selesai.</p>
+          <p class="text-muted">Tidak ada jam tayang hari ini yang masih berlangsung atau belum selesai.</p>
         {% endfor %}
       </div>
     </div>
@@ -228,7 +228,7 @@
       if (hasShowtime && selectedSeats.length > 0) {
         const ticketSubtotal = ticketPrice * selectedSeats.length;
         total += ticketSubtotal;
-        addSummaryRow(`Tiket - ${selectedShowtime.dataset.label || "Showtime"}`, selectedSeats.length, ticketPrice, ticketSubtotal);
+        addSummaryRow(`Tiket - ${selectedShowtime.dataset.label || "Jam tayang"}`, selectedSeats.length, ticketPrice, ticketSubtotal);
       }
 
       form.querySelectorAll("[data-addon-input]").forEach((input) => {

@@ -427,7 +427,7 @@
     wizard.querySelector("[data-summary-conflict]").hidden = !conflict && !pastStart;
     wizard.querySelector("[data-summary-conflict]").textContent = pastStart
       ? "Jam mulai sudah lewat. Pilih slot yang masih tersedia."
-      : "Waktu bertabrakan dengan showtime lain. Pilih slot kosong.";
+      : "Waktu bertabrakan dengan jam tayang lain. Pilih slot kosong.";
     summary.classList.toggle("has-conflict", conflict || pastStart);
     if (submit) submit.disabled = conflict || pastStart;
     updateConfirmMessage();

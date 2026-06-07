@@ -1,14 +1,37 @@
 {% extends "cinema/base.html" %}
 {% load cinema_tags %}
-{% block title %}Daftar Showtime{% endblock %}
+{% block title %}Daftar Jam Tayang{% endblock %}
 {% block content %}
-<div class="page-header"><div><h1 class="page-title">Daftar Showtime</h1><p class="page-subtitle">Showtime nonaktif tetap terlihat sebagai riwayat scheduler.</p></div></div>
-<div class="card"><div class="table-wrapper"><table>
-  <thead><tr><th>Film</th><th>Studio</th><th>Mulai</th><th>Selesai</th><th>Harga</th><th>Status</th><th></th></tr></thead>
-  <tbody>
-    {% for showtime in showtimes %}
-      <tr><td>{{ showtime.movie.title }}</td><td>{{ showtime.studio.name }}</td><td>{{ showtime.start_at|date:"d M H:i" }}</td><td>{{ showtime.end_at|date:"H:i" }}</td><td>{{ showtime.price|rupiah }}</td><td>{% include "cinema/partials/status_badge.html" with status=showtime.is_active|yesno:"ACTIVE,INACTIVE" %}</td><td><form method="post" action="{% url 'cinema:scheduler_showtime_disable' showtime.pk %}" style="display:inline" data-confirm data-confirm-mode="danger" data-confirm-title="Nonaktifkan jadwal tayang?" data-confirm-message="Jadwal {{ showtime.movie.title }} ({{ showtime.start_at|date:'d M H:i' }}) akan dinonaktifkan." data-confirm-yes="Nonaktifkan" data-confirm-no="Batal">{% csrf_token %}<button class="button button-danger">Nonaktifkan</button></form></td></tr>
-    {% empty %}<tr><td colspan="7">Belum ada showtime.</td></tr>{% endfor %}
-  </tbody>
-</table></div></div>
+<div class="page-header"><div><h1 class="page-title">Daftar Jam Tayang</h1><p class="page-subtitle">Daftar jam tayang yang sudah selesai, sedang berlangsung, dan dijadwalkan.</p></div></div>
+<div class="scheduler-showtime-tabs card">
+  {% for tab in showtime_tabs %}
+    <input
+      class="scheduler-showtime-tab-input"
+      type="radio"
+      name="scheduler-showtime-tab"
+      id="scheduler-showtime-tab-{{ tab.id }}"
+      {% if forloop.first %}checked{% endif %}
+    >
+  {% endfor %}
+  <div class="scheduler-showtime-tab-list" role="tablist" aria-label="Kategori jam tayang">
+    {% for tab in showtime_tabs %}
+      <label class="scheduler-showtime-tab-label" for="scheduler-showtime-tab-{{ tab.id }}" role="tab">
+        <span>{{ tab.label }}</span>
+        <strong>{{ tab.showtimes|length }}</strong>
+      </label>
+    {% endfor %}
+  </div>
+  {% for tab in showtime_tabs %}
+    <section class="scheduler-showtime-tab-panel scheduler-showtime-tab-panel-{{ tab.id }}" role="tabpanel">
+      <div class="table-wrapper"><table>
+        <thead><tr><th>Film</th><th>Studio</th><th>Mulai</th><th>Selesai</th><th>Harga</th><th>Status</th></tr></thead>
+        <tbody>
+          {% for showtime in tab.showtimes %}
+            <tr><td>{{ showtime.movie.title }}</td><td>{{ showtime.studio.name }}</td><td>{{ showtime.start_at|date:"d M H:i" }}</td><td>{{ showtime.end_at|date:"d M H:i" }}</td><td>{{ showtime.price|rupiah }}</td><td>{% include "cinema/partials/status_badge.html" with status=showtime.is_active|yesno:"ACTIVE,INACTIVE" %}</td></tr>
+          {% empty %}<tr><td colspan="6">Belum ada jam tayang {{ tab.label|lower }}.</td></tr>{% endfor %}
+        </tbody>
+      </table></div>
+    </section>
+  {% endfor %}
+</div>
 {% endblock %}

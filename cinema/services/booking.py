@@ -78,7 +78,7 @@ def validate_seats(showtime, seat_ids):
 def create_online_order(showtime_id, seat_ids, addons, customer=None):
     showtime = ShowTime.objects.select_for_update().select_related("movie", "studio").get(id=showtime_id)
     if not showtime.is_active or not showtime.movie.is_active or not showtime.studio.is_active:
-        raise ValidationError("Showtime tidak tersedia untuk pemesanan.")
+        raise ValidationError("Jam tayang tidak tersedia untuk pemesanan.")
     seats = validate_seats(showtime, seat_ids)
     total = calculate_total(showtime, seats, addons)
 
@@ -127,7 +127,7 @@ def create_online_order(showtime_id, seat_ids, addons, customer=None):
 def create_onsite_order(showtime_id, seat_ids, addons, customer=None):
     showtime = ShowTime.objects.select_for_update().select_related("movie", "studio").get(id=showtime_id)
     if not showtime.is_active or not showtime.movie.is_active or not showtime.studio.is_active:
-        raise ValidationError("Showtime tidak tersedia untuk penjualan counter.")
+        raise ValidationError("Jam tayang tidak tersedia untuk penjualan counter.")
     seats = validate_seats(showtime, seat_ids)
     total = calculate_total(showtime, seats, addons) - SERVICE_CHARGE_PRICE
 
