@@ -9,9 +9,9 @@
   </div>
   <a class="button button-secondary" href="{% url 'cinema:movies' %}">Kembali</a>
 </div>
-<div class="grid-2">
-  <div class="card">
-    <div class="movie-poster{% if movie.main_picture %} movie-poster-has-image{% endif %}">
+<div class="movie-detail-layout">
+  <div class="card movie-detail-poster-card">
+    <div class="movie-poster movie-detail-poster{% if movie.main_picture %} movie-poster-has-image{% endif %}">
       {% if movie.main_picture %}
         <img class="movie-poster-image" src="{{ movie.main_picture.url }}" alt="{{ movie.title }}">
       {% else %}
@@ -22,17 +22,19 @@
       {% endif %}
     </div>
   </div>
-  <div class="card">
-    <div class="card-header">Sinopsis</div>
-    <div class="card-body">{{ movie.synopsis }}</div>
+  <div class="movie-detail-content">
+    <div class="card">
+      <div class="card-header">Sinopsis</div>
+      <div class="card-body movie-detail-synopsis">{{ movie.synopsis }}</div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <span>Jam Tayang</span>
+        <span class="text-muted">{{ booking_window_days }} hari ke depan</span>
+      </div>
+      {% include "cinema/partials/movie_showtime_days.html" %}
+      {% include "cinema/partials/movie_showtime_list.html" with initial_load_url=showtime_list_initial_url %}
+    </div>
   </div>
-</div>
-<div class="card mt-4">
-  <div class="card-header">
-    <span>Jam Tayang</span>
-    <span class="text-muted">{{ booking_window_days }} hari ke depan</span>
-  </div>
-  {% include "cinema/partials/movie_showtime_days.html" %}
-  {% include "cinema/partials/movie_showtime_list.html" with initial_load_url=showtime_list_initial_url %}
 </div>
 {% endblock %}

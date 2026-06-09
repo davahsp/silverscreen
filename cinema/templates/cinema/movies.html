@@ -11,7 +11,7 @@
 <div class="movie-grid">
   {% for movie in movies %}
     <a class="movie-card" href="{% url 'cinema:movie_detail' movie.pk %}" aria-label="Beli tiket untuk {{ movie.title }}">
-      <div class="movie-poster{% if movie.main_picture %} movie-poster-has-image{% endif %}">
+      <div class="movie-poster movie-card-poster{% if movie.main_picture %} movie-poster-has-image{% endif %}">
         {% if movie.main_picture %}
           <img class="movie-poster-image" src="{{ movie.main_picture.url }}" alt="{{ movie.title }}">
         {% else %}
