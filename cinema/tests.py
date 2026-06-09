@@ -1785,6 +1785,15 @@ class AuthenticationTests(TestCase):
         )
         self.assertRedirects(response, reverse("cinema:movies"))
 
+    def test_login_page_links_to_main_page_for_guest(self):
+        response = self.client.get(reverse("cinema:login"))
+
+        self.assertContains(
+            response,
+            f'<a href="{reverse("cinema:index")}">Lanjutkan sebagai tamu</a>',
+            html=True,
+        )
+
     def test_login_redirects_manager_to_dashboard(self):
         make_role_user("bob", "manager")
         response = self.client.post(

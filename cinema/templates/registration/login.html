@@ -23,5 +23,6 @@
     <button class="button button-primary button-full" type="submit">Masuk</button>
   </form>
   <p class="auth-alt">Belum punya akun? <a href="{% url 'cinema:register' %}">Daftar sebagai pelanggan</a></p>
+  <p class="auth-alt auth-guest"><a href="{% url 'cinema:index' %}">Lanjutkan sebagai tamu</a></p>
 </div>
 {% endblock %}
