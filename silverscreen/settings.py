@@ -10,22 +10,50 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
+import os
 from pathlib import Path
+
+import dj_database_url
+from django.core.exceptions import ImproperlyConfigured
+from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+
+dotenv_path = BASE_DIR / ".env"
+if dotenv_path.exists():
+    load_dotenv(dotenv_path)
 
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-x9$w3wd4a1!lteln_$icx^(*96w%_ym%9v9a$%a_5)w=c1*_%0'
+SECRET_KEY = os.environ.get('SECRET_KEY')
+if not SECRET_KEY:
+    raise ImproperlyConfigured('SECRET_KEY is missing.')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+debug_env = os.environ.get('DEBUG')
+if not debug_env or not debug_env.strip():
+    raise ImproperlyConfigured('DEBUG is missing.')
 
-ALLOWED_HOSTS = ["localhost", "127.0.0.1", "testserver"]
+DEBUG = debug_env.strip().lower() in {'true', '1', 'yes', 'on', 'debug'}
+
+hosts = os.environ.get('ALLOWED_HOSTS')
+if not hosts or not hosts.strip():
+    raise ImproperlyConfigured('ALLOWED_HOSTS is missing.')
+
+ALLOWED_HOSTS = [host.strip() for host in hosts.split(',') if host.strip()]
+CSRF_TRUSTED_ORIGINS = [
+    f"{'http' if DEBUG else 'https'}://{host}"
+    for host in ALLOWED_HOSTS
+    if host != '*' and not host.startswith('.')
+]
+
+# Trust the HTTPS protocol header sent by production reverse proxies.
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 
 # Application definition
@@ -52,6 +80,9 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
+if not DEBUG:
+    MIDDLEWARE.insert(1, 'whitenoise.middleware.WhiteNoiseMiddleware')
+
 ROOT_URLCONF = 'silverscreen.urls'
 
 TEMPLATES = [
@@ -77,12 +108,25 @@ WSGI_APPLICATION = 'silverscreen.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+if DEBUG:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
     }
-}
+else:
+    db_url = os.environ.get('DB_URL')
+    if not db_url:
+        raise ImproperlyConfigured('DB_URL is missing in the production environment.')
+
+    DATABASES = {
+        'default': dj_database_url.parse(
+            db_url,
+            conn_max_age=600,
+            ssl_require=True,
+        )
+    }
 
 
 # Password validation
@@ -119,7 +163,18 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+if not DEBUG:
+    STORAGES = {
+        'default': {
+            'BACKEND': 'django.core.files.storage.FileSystemStorage',
+        },
+        'staticfiles': {
+            'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage',
+        },
+    }
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
@@ -128,4 +183,7 @@ LOGIN_URL = "/login/"
 LOGIN_REDIRECT_URL = "/"
 LOGOUT_REDIRECT_URL = "/login/"
 
-STUB_GATEWAY_CALLBACK_URL = "http://127.0.0.1:8000/payments/callback/"
+STUB_GATEWAY_CALLBACK_URL = os.environ.get(
+    'STUB_GATEWAY_CALLBACK_URL',
+    "http://127.0.0.1:8000/payments/callback/",
+)
